@@ -1,0 +1,161 @@
+/* Tipografía de competición y fondos temáticos.
+ * Estos estilos amplían style.css sin cambiar la estructura de la página.
+ */
+@font-face {
+  font-family: "Racing Sans One";
+  src: url("assets/fonts/racing-sans-one.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  --heading: "Racing Sans One", "Arial Black", "Trebuchet MS", sans-serif;
+}
+
+body {
+  isolation: isolate;
+  overflow-x: clip;
+  transition: color 0.6s ease, background-color 0.6s ease;
+}
+
+body[data-background="coast"] {
+  --cream: #fff6e9f2;
+  --paper: #fffdf5f2;
+  --ink: #20374b;
+  --muted: #3c5366;
+  --teal: #0c6e67;
+  --line: #90aba85c;
+  --soft-fill: #cddfceae;
+  --panel: #fff9e5d6;
+  --section-wash: #fff6e949;
+  --active-text: #fffdf7;
+}
+
+body[data-background="neon"] {
+  --cream: #171e39ed;
+  --paper: #25324cef;
+  --ink: #faf5ff;
+  --muted: #d2dbed;
+  --teal: #93f9e5;
+  --line: #c5bce847;
+  --soft-fill: #64518563;
+  --panel: #2c2643d9;
+  --section-wash: #131a3738;
+  --active-text: #152a3d;
+}
+
+body[data-background="alpine"] {
+  --cream: #eefaffed;
+  --paper: #f8fdfff2;
+  --ink: #193b55;
+  --muted: #35576c;
+  --teal: #115f85;
+  --line: #819db867;
+  --soft-fill: #c9e0edcc;
+  --panel: #e5f3fbe5;
+  --section-wash: #e8f5ff4d;
+  --active-text: #fffdf7;
+}
+
+.scene-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background: #ecf4ee;
+}
+
+.scene-layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 1.1s ease;
+}
+
+.scene-layer.is-visible { opacity: 1; }
+.scene-layer::after { content: ""; position: absolute; inset: 0; }
+.scene-coast { background-image: url("assets/coast.webp"); }
+.scene-neon { background-image: url("assets/neon.webp"); }
+.scene-alpine { background-image: url("assets/alpine.webp"); }
+.scene-coast::after { background: linear-gradient(100deg, #fff4dfea 5%, #fff4dfdb 53%, #fff4dfb0 100%); }
+.scene-neon::after { background: linear-gradient(100deg, #111a32f2 5%, #1b2343e6 53%, #241844bd 100%); }
+.scene-alpine::after { background: linear-gradient(100deg, #eefafff2 5%, #e8f5fde8 53%, #d6ecf5ba 100%); }
+
+h1, h2, h3, .brand, .world-tab strong {
+  font-weight: 400;
+  letter-spacing: -0.025em;
+}
+
+h1, h2 { text-transform: uppercase; }
+.hero h1 { font-size: clamp(3.1rem, 4.9vw, 4.7rem); letter-spacing: -0.035em; line-height: 1.08; }
+.brand { font-style: normal; font-size: 1.22rem; }
+.brand-second { letter-spacing: 0.005em; }
+.site-header { background: var(--cream); transition: background-color 0.6s ease, border-color 0.6s ease; }
+.language-switch button[aria-pressed="true"] { background: var(--teal); color: var(--active-text); }
+.race-rules .rule-number { background: var(--soft-fill); }
+.hero-image-wrap { box-shadow: 12px 14px 0 var(--soft-fill); }
+.worlds-section { background: var(--section-wash); border-color: var(--line); }
+.concept-note, .camera-note p, .controls-section .section-intro > p:not(.eyebrow) { color: var(--muted); }
+.controls-section { background: var(--section-wash); border-block: 1px solid var(--line); }
+.control-board { box-shadow: 7px 7px 0 var(--soft-fill); }
+.mode-switch { background: var(--soft-fill); }
+.mode-switch .is-active { background: #23394e; color: #fffdf7; }
+.keys kbd { color: #23394e; }
+.team-avatar { color: #23394e; }
+.development-note { background: var(--panel); }
+.object-item, .button-coral, .button-yellow, .art-sticker { color: #23394e; }
+.art-sticker { border-color: #fffdf7; }
+.play-section { background: #16283be8; }
+.play-inner h2 { color: #fffdf7; }
+.footer-brand { font-size: 1rem; }
+
+/* Dos grupos idénticos. Cada grupo se rellena por JS hasta cubrir la pantalla.
+ * La segunda copia ocupa el lugar de la primera sin huecos en la unión.
+ */
+.track-ribbon { color: #193249; border-color: #193249; padding-block: 15px; }
+.track-ribbon > .ribbon-track {
+  display: flex;
+  justify-content: flex-start;
+  width: max-content;
+  gap: 0;
+  padding: 0;
+  white-space: nowrap;
+  font-family: "Racing Sans One", "Arial Black", sans-serif;
+  font-size: 1.35rem;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0.045em;
+  line-height: 1.5;
+  animation: ribbon-loop var(--ribbon-duration, 45s) linear infinite;
+  will-change: transform;
+}
+.ribbon-group { display: flex; flex-shrink: 0; gap: 0; }
+.ribbon-unit { display: flex; align-items: center; flex-shrink: 0; gap: 48px; padding-right: 48px; }
+@keyframes ribbon-loop { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+@media (max-width: 850px) {
+  .hero h1 { font-size: clamp(3.05rem, 6.8vw, 4.25rem); }
+  .brand { font-size: 1.08rem; }
+}
+@media (max-width: 600px) {
+  .brand { font-size: 0.96rem; }
+  .hero h1 { font-size: clamp(2.45rem, 9.6vw, 3.3rem); }
+  .hero-image-wrap { box-shadow: 6px 8px 0 var(--soft-fill); }
+  .scene-layer { background-position: 65% center; }
+  .scene-coast::after { background: #fff4dfde; }
+  .scene-neon::after { background: #141b35e6; }
+  .scene-alpine::after { background: #e9f7ffe3; }
+  .track-ribbon { padding-block: 13px; }
+  .track-ribbon > .ribbon-track { font-size: 1.15rem; }
+  .ribbon-unit { gap: 32px; padding-right: 32px; }
+  .control-board { box-shadow: 4px 5px 0 var(--soft-fill); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-layer, body, .site-header { transition: none; }
+  .track-ribbon > .ribbon-track { animation: none; }
+}
