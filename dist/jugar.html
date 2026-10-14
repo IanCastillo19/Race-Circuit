@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c111c">
+  <title>Race Circuit · Prototipo</title>
+  <link rel="stylesheet" href="./juego.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <main id="juego" aria-label="Vista del prototipo de conducción">
+    <canvas id="escena"></canvas>
+    <header class="cabecera">
+      <a id="volver" class="boton" href="./index.html">← Volver</a>
+      <div class="marca"><span>RACE CIRCUIT</span><small id="etiqueta-prototipo">PROTOTIPO DE CONDUCCIÓN</small></div>
+      <div class="velocimetro"><strong id="velocidad">0</strong><span>km/h</span></div>
+    </header>
+    <section class="panel" aria-label="Controles y estado">
+      <p class="controles" id="controles"><kbd>W</kbd> acelerar · <kbd>S</kbd> frenar / marcha atrás · <kbd>A</kbd><kbd>D</kbd> dirección</p>
+      <p id="estado" role="status">Cargando… Si no avanza, abre esta página con un servidor local y conexión a Internet.</p>
+      <div class="acciones">
+        <button id="vista" class="boton" type="button" disabled>Ver circuito</button>
+        <button id="reiniciar" class="boton" type="button" disabled>Reiniciar · R</button>
+        <button id="idioma" class="boton" type="button" aria-label="Cambiar idioma">ES</button>
+      </div>
+      <p id="ayuda-salida" class="nota">En la vista del circuito: Mayús + clic sobre la carretera para elegir la salida.</p>
+      <details id="diagnostico">
+        <summary id="titulo-diagnostico">Modelos y ajustes</summary>
+        <p id="coordenadas"></p>
+        <pre id="lista-modelos">Esperando los modelos…</pre>
+      </details>
+    </section>
+  </main>
+  <noscript>Necesitas activar JavaScript para ejecutar este prototipo.</noscript>
+  <script type="module" src="./juego.js"></script>
+</body>
+</html>

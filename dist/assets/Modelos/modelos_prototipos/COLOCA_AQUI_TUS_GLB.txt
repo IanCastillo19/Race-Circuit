@@ -1,0 +1,11 @@
+Pon tus propios modelos en esta carpeta con estos nombres exactos:
+
+Chasis.glb
+RuedasD.glb
+RuedasT.glb
+Circuito.glb
+
+Chasis = carrocería; RuedasD = delanteras; RuedasT = traseras.
+Conserva las posiciones de las piezas al exportarlas desde la misma escena de Blender.
+Cada rueda debe ser un objeto independiente dentro de su archivo.
+Este paquete no incluye tus modelos: hasta ahora solo se ha recibido una captura.
