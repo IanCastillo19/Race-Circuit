@@ -5,6 +5,8 @@
 .marcador-carrera div { display:grid;gap:5px; }
 .marcador-carrera small { color:#bfc6d5;font-size:10px;letter-spacing:1px; }
 .marcador-carrera strong { font-size:19px;font-variant-numeric:tabular-nums; }
+.marcador-carrera { flex-wrap:wrap;max-width:calc(100% - 40px); }
+.nitro-tiempo { color:#5ce7e2; }
 .capa-carrera { position:absolute;top:43%;left:50%;transform:translate(-50%,-50%);width:min(420px,calc(100% - 32px));max-height:60%;overflow:auto;padding:24px;background:#0c111cf5;border:1px solid #ffe33688;border-radius:15px;text-align:center;box-shadow:0 12px 50px #0008; }
 .capa-carrera h1 { margin:0 0 12px;color:#ffe336;font:italic 30px Impact,'Arial Black',sans-serif; }
 .capa-carrera p { font-size:14px;line-height:1.5;white-space:pre-line; }
