@@ -46,14 +46,23 @@ export const CONFIG = {
     rumboGrados: 0,          // Orientación inicial del jugador, independiente del GLB.
   },
   conduccion: {
-    velocidadMaxima: 16,      // m/s: aproximadamente 58 km/h.
+    velocidadMaxima: 25,      // m/s: aproximadamente 58 km/h.
     velocidadMarchaAtras: 5,
-    aceleracion: 6,
+    aceleracion: 3,
     aceleracionMarchaAtras: 4,
-    frenada: 12,
-    desaceleracion: 2,        // Pérdida de velocidad al soltar W/S.
+    frenada: 6,
+    desaceleracion: 1.5,        // Pérdida de velocidad al soltar W/S.
     giroMaximoGrados: 30,
     respuestaDireccion: 9,
+  },
+  cesped: {
+    activo: true,
+    nombresCesped: ['Plane002'],       // Malla verde del Circuito.glb actual.
+    nombresAsfalto: ['Plane', 'Plane001'], // Carretera y zona de meta; excluye decoración.
+    factorVelocidad: 0.4,              // Con 4 ruedas fuera: 40 % de la velocidad máxima.
+    factorAceleracion: 0.45,           // Con 4 ruedas fuera: 45 % de la aceleración.
+    factorDesaceleracion: 3,           // Más resistencia al soltar el acelerador.
+    frenadaExceso: 4,                  // m/s²: reduce progresivamente el exceso de velocidad.
   },
   camara: {
     distancia: 12,
