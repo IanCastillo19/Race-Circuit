@@ -1,10 +1,18 @@
 # Race Circuit: cargar vuestros GLB y conducir con WASD
 
+<<<<<<< HEAD
 Esta guía acompaña al código de esta carpeta. El resultado de este primer paso es: circuito y coche visibles, cámara de seguimiento, aceleración, frenada, marcha atrás, cuatro ruedas que ruedan, dos ruedas delanteras que orientan la dirección y un límite para mantenerse sobre el terreno. No necesitas programar animaciones en Blender: las ruedas se animan con JavaScript.
 
 **Actualización según tu captura:** esta versión carga `Chasis.glb`, `RuedasD.glb`, `RuedasT.glb` y `Circuito.glb` desde `dist/assets/Modelos/modelos_prototipos/`. El coche se monta con los tres primeros archivos. Se entiende que D son las ruedas delanteras y T las traseras. Solo se ha recibido una captura; los GLB aún no se han adjuntado, por lo que hay que comprobar su geometría, escala y orientación. Este prototipo usa conducción arcade sencilla; todavía no incluye colisiones con obstáculos, vueltas, objetos, multijugador ni física de suspensión.
 
 **Correcciones tras tu prueba en Live Server:** cámara a 12 m y 6.5 m de altura, rejilla de ayuda eliminada, giro del conjunto del coche a 90° y comprobación del suelo bajo el coche para detenerse en el borde. Si ya tienes la versión con `modelos.js`, reemplaza **`config.js`, `juego.js`, `movimiento.js` y `vehiculo.js`**, y añade **`limites.js`**. `modelos.js`, `jugar.html` y `juego.css` se conservan. Tus cuatro GLB mantienen su ubicación y nombre. Recarga con Ctrl+F5.
+=======
+Esta guía acompaña al código de esta carpeta. El resultado de este primer paso es: circuito y coche visibles, cámara de seguimiento, aceleración, frenada, marcha atrás, cuatro ruedas que ruedan y dos ruedas delanteras que orientan la dirección. No necesitas programar animaciones en Blender: las ruedas se animan con JavaScript.
+
+**Actualización según tu captura:** esta versión carga `Chasis.glb`, `RuedasD.glb`, `RuedasT.glb` y `Circuito.glb` desde `dist/assets/Modelos/modelos_prototipos/`. El coche se monta con los tres primeros archivos. Se entiende que D son las ruedas delanteras y T las traseras. Solo se ha recibido una captura; los GLB aún no se han adjuntado, por lo que hay que comprobar su geometría, escala y orientación. Este prototipo usa conducción arcade sencilla; todavía no incluye colisiones, vueltas, objetos, multijugador ni física de suspensión.
+
+Si ya copiaste la versión anterior, reemplaza `config.js`, `juego.js` y `vehiculo.js`, y añade el nuevo **`modelos.js`**. Puedes dejar `jugar.html`, `juego.css` y `movimiento.js` como están. Tus cuatro archivos GLB conservan su ubicación y nombre.
+>>>>>>> T4
 
 ## 1. Preparar el coche en Blender
 
@@ -55,9 +63,14 @@ Descomprime `Race_Circuit_ThreeJS.zip`. Copia estos archivos **al lado de vuestr
 | `movimiento.js` | Aceleración, frenada y dirección |
 | `vehiculo.js` | Preparación del coche y pivotes de las ruedas |
 | `modelos.js` | Carga y montaje de chasis, ruedas delanteras y ruedas traseras |
+<<<<<<< HEAD
 | `limites.js` | Comprueba la superficie del terreno bajo el coche y busca una salida válida |
 
 Según tu captura, el proyecto usa **`dist/`**. Los ocho archivos de la tabla van en `dist/`, junto a `index.html`. Tus modelos se quedan en `dist/assets/Modelos/modelos_prototipos/`. Si más adelante mueves el contenido de `dist/` a la raíz del repositorio, conserva la misma posición relativa de los archivos.
+=======
+
+Según tu captura, el proyecto usa **`dist/`**. Los siete archivos de la tabla van en `dist/`, junto a `index.html`. Tus modelos se quedan en `dist/assets/Modelos/modelos_prototipos/`. Si más adelante mueves el contenido de `dist/` a la raíz del repositorio, conserva la misma posición relativa de los archivos.
+>>>>>>> T4
 
 Tu carpeta de modelos ya tiene los cuatro archivos necesarios. Las rutas en `config.js` son relativas a `jugar.html` y usan las mayúsculas de tu captura:
 
@@ -75,7 +88,11 @@ modelos: {
 },
 ```
 
+<<<<<<< HEAD
 El juego necesita tanto `modelos.js` como `limites.js`: si falta uno de los módulos importados, la página puede quedarse en el texto inicial de carga. Cambiar solo las rutas de la primera versión no bastaría para cargar el coche dividido en tres archivos.
+=======
+Esta actualización incluye también `modelos.js`: cambiar solo las rutas de la versión anterior no bastaría para cargar el coche dividido en tres archivos.
+>>>>>>> T4
 
 El botón **Jugar ahora** de la web ya apunta a `jugar.html?lang=es`, cambiando `es` por `ca` o `en` según el idioma. El prototipo admite los tres idiomas. Si tu botón actual tiene otro enlace, usa:
 
@@ -143,9 +160,14 @@ Haz un cambio cada vez, guarda y recarga el navegador.
 
 El jugador avanza hacia su eje local **-Z**. `giroModeloGrados` corrige cómo se ha exportado el coche, sin cambiar los controles:
 
+<<<<<<< HEAD
 - La versión actual usa `coche.giroModeloGrados: 90` para corregir el avance lateral que has observado.
 - Si ahora W hace que el coche vaya de culo, cambia ese valor a `-90` y recarga. Sin los GLB no se puede confirmar cuál de los dos signos coincide con su parte frontal.
 - Para un modelo que ya mire hacia -Z, usa `0`; para uno que mire hacia +Z, usa `180`.
+=======
+- Si W hace que el coche parezca ir de culo, cambia `coche.giroModeloGrados` de `0` a `180`.
+- Si parece ir de lado, prueba `90` o `-90`.
+>>>>>>> T4
 - Vuelve a probar después de recargar. Las delanteras deben estar en la parte frontal, con Z local negativo. El panel avisa si detecta lo contrario.
 
 No confundir `coche.giroModeloGrados` —corrección del modelo— con `salida.rumboGrados` —dirección inicial en la pista—.
@@ -165,6 +187,7 @@ No confundir `coche.giroModeloGrados` —corrección del modelo— con `salida.r
 - `conduccion.velocidadMaxima` está en m/s. Para convertirla a km/h, multiplícala por `3.6`.
 - `conduccion.giroMaximoGrados` determina cuánto giran las delanteras; empieza con `30`.
 
+<<<<<<< HEAD
 ### Cámara y rejilla
 
 En `config.js`, la cámara usa `distancia: 12`, `altura: 6.5` y `mirarDelante: 4`. Puedes aumentar la distancia, por ejemplo a `15`, si todavía quieres ver más circuito. La rejilla `GridHelper` se ha eliminado de `juego.js`; no forma parte de tu GLB.
@@ -193,6 +216,8 @@ El margen deja un poco de separación adicional del borde. Si el nombre de zona 
 
 Es un límite para un prototipo de terreno plano o de pendiente suave. No sustituye las futuras colisiones contra obstáculos ni la física de puentes o saltos. Si quieres que el límite coincida exactamente con lo verde, usa una malla o grupo de esa zona, con normales orientadas hacia arriba.
 
+=======
+>>>>>>> T4
 ## 8. Cómo funcionan las ruedas
 
 Cada rueda delantera tiene dos grupos anidados: el pivote de dirección está situado en su centro; dentro está el pivote de rodadura; dentro de este se coloca la rueda importada. Las traseras usan la misma estructura, pero su pivote de dirección se mantiene en cero.
@@ -219,9 +244,12 @@ La dirección y el desplazamiento se actualizan con el tiempo transcurrido entre
 | 0/4 ruedas, pero el coche se mueve | La lista del panel muestra los nombres reales. Cambia `coche.ruedas` o separa y renombra las ruedas en Blender. |
 | No se distinguen dos ruedas independientes | No gires el GLB del eje entero. Separa cada rueda en Blender, conserva sus posiciones, nómbralas y reexporta las dos seleccionadas juntas. |
 | Chasis y ruedas se superponen | Reexporta desde la misma escena sin recentrar cada pieza, o ajusta `coche.piezas`. |
+<<<<<<< HEAD
 | El coche se detiene aunque el centro siga dentro | El límite exige suelo bajo las cuatro esquinas; aléjate del borde o corrige el tamaño del coche. |
 | Se puede ir fuera de lo verde, pero sigue habiendo suelo | Selecciona la malla o grupo permitido en `limites.nombreZona`; el límite no clasifica los colores del material. |
 | No se encuentra una salida válida | Usa Ver circuito y elige un punto interior, comprueba la escala del coche y que las normales del suelo apunten hacia arriba. |
+=======
+>>>>>>> T4
 | Una rueda orbita alrededor del coche | Debe contener solo la geometría de esa rueda; elimina carrocería o ruedas adicionales del objeto o grupo. |
 | Escala no uniforme o armature en el diagnóstico | Aplica Rotation & Scale a los objetos y padres. Para esta base usa ruedas como objetos estáticos independientes. |
 | El coche va de lado o de culo | Ajusta `giroModeloGrados`, recarga y verifica los nombres delanteros/traseros. |
@@ -233,14 +261,21 @@ La dirección y el desplazamiento se actualizan con el tiempo transcurrido entre
 
 ## 10. Qué se ha comprobado y qué falta comprobar
 
+<<<<<<< HEAD
 El paquete se entrega con comprobaciones de sintaxis, pruebas de conducción, pivotes y límites con geometría de prueba, y una comprobación del bucle completo en un entorno simulado. Se comprueba que el coche se detenga en el borde y pueda retroceder. No se ha ejecutado con vuestros GLB ni se ha verificado su apariencia en navegador, porque aún no se han recibido. La prueba con los modelos reales debe confirmar el signo de los 90°, el tamaño del coche y qué malla corresponde a lo verde.
+=======
+El paquete se entrega con comprobaciones de sintaxis y pruebas de la conducción y los pivotes con geometría de prueba. No se ha ejecutado con vuestros GLB ni se ha verificado su apariencia en navegador, porque aún no se han recibido. La primera prueba con los modelos debe revisar orientación, nombres, tamaño y punto de salida.
+>>>>>>> T4
 
 Referencias oficiales:
 
 - [Three.js: instalación, importmap y servidor local](https://threejs.org/manual/pages/installation.html)
 - [Three.js: GLTFLoader](https://threejs.org/docs/pages/GLTFLoader.html)
 - [Three.js: Object3D y attach](https://threejs.org/docs/pages/Object3D.html)
+<<<<<<< HEAD
 - [Three.js: Raycaster e intersecciones con superficies](https://threejs.org/docs/pages/Raycaster.html)
+=======
+>>>>>>> T4
 - [Blender: exportar glTF/GLB](https://docs.blender.org/manual/en/latest/addons/scene_gltf2.html)
 - [Blender: aplicar transformaciones](https://docs.blender.org/manual/en/latest/scene_layout/object/editing/apply.html)
 - [Blender: origen de objetos](https://docs.blender.org/manual/en/latest/scene_layout/object/origin.html)

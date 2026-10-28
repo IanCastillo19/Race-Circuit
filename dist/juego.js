@@ -2,10 +2,16 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CONFIG } from './config.js';
+<<<<<<< HEAD
 import { crearEstado, avanzarConLimite } from './movimiento.js';
 import { crearVehiculo } from './vehiculo.js';
 import { cargarConjuntoCoche } from './modelos.js';
 import { crearLimite } from './limites.js';
+=======
+import { crearEstado, avanzar } from './movimiento.js';
+import { crearVehiculo } from './vehiculo.js';
+import { cargarConjuntoCoche } from './modelos.js';
+>>>>>>> T4
 
 const $ = id => document.getElementById(id);
 const textos = {
@@ -17,15 +23,21 @@ const textos = {
     cargando: 'Cargando los modelos…', listo: 'Listo. Usa WASD para conducir.',
     inspeccion: 'Arrastra para mirar el circuito; usa la rueda del ratón para acercarte. Mayús + clic elige la salida.',
     salidaElegida: 'Salida guardada para esta sesión. R vuelve a este punto.',
+<<<<<<< HEAD
     borde: 'Límite del terreno. Frena y cambia de dirección o retrocede.',
     salidaFuera: 'El coche completo debe caber dentro del terreno. Elige un punto más alejado del borde.',
     salidaInvalida: 'No se encuentra una salida válida. Elige una con Ver circuito y Mayús + clic, o revisa el tamaño del coche y la zona del límite.',
     salidaReubicada: 'El punto inicial estaba fuera del terreno. Se ha colocado el coche en una zona válida; usa WASD.',
+=======
+>>>>>>> T4
     avisos: 'El coche se puede mover. Revisa las ruedas en «Modelos y ajustes».',
     error: 'No se han podido cargar todos los modelos. Revisa las rutas y el servidor en «Modelos y ajustes».',
     webgl: 'No se ha podido iniciar WebGL. Comprueba que tu navegador tenga aceleración gráfica.',
     nombres: 'Nombres originales del coche', problemas: 'Diagnóstico',
+<<<<<<< HEAD
     nombresCircuito: 'Objetos del circuito', limite: 'Zona del límite', todoCircuito: 'Superficie del circuito',
+=======
+>>>>>>> T4
     posicion: 'Posición', rumbo: 'Rumbo', circuito: 'Tamaño del circuito', ruedas: 'Ruedas animables',
     ejes: 'Distancia entre ejes', radio: 'Radios de las ruedas',
   },
@@ -37,15 +49,21 @@ const textos = {
     cargando: 'Carregant els models…', listo: 'A punt. Fes servir WASD per conduir.',
     inspeccion: 'Arrossega per mirar el circuit; fes servir la roda del ratolí per apropar-te. Majúscules + clic tria la sortida.',
     salidaElegida: 'Sortida desada per a aquesta sessió. R torna a aquest punt.',
+<<<<<<< HEAD
     borde: 'Límit del terreny. Frena i canvia de direcció o fes marxa enrere.',
     salidaFuera: 'El cotxe sencer ha de cabre dins del terreny. Tria un punt més allunyat de la vora.',
     salidaInvalida: 'No es troba una sortida vàlida. Tria-la amb Veure circuit i Majúscules + clic, o revisa la mida del cotxe i la zona del límit.',
     salidaReubicada: 'El punt inicial era fora del terreny. El cotxe s’ha col·locat en una zona vàlida; fes servir WASD.',
+=======
+>>>>>>> T4
     avisos: 'El cotxe es pot moure. Revisa les rodes a «Models i ajustos».',
     error: 'No s’han pogut carregar tots els models. Revisa les rutes i el servidor a «Models i ajustos».',
     webgl: 'No s’ha pogut iniciar WebGL. Comprova que el navegador tingui acceleració gràfica.',
     nombres: 'Noms originals del cotxe', problemas: 'Diagnòstic',
+<<<<<<< HEAD
     nombresCircuito: 'Objectes del circuit', limite: 'Zona del límit', todoCircuito: 'Superfície del circuit',
+=======
+>>>>>>> T4
     posicion: 'Posició', rumbo: 'Orientació', circuito: 'Mida del circuit', ruedas: 'Rodes animables',
     ejes: 'Distància entre eixos', radio: 'Radis de les rodes',
   },
@@ -57,15 +75,21 @@ const textos = {
     cargando: 'Loading models…', listo: 'Ready. Use WASD to drive.',
     inspeccion: 'Drag to look around; scroll to zoom. Shift + click chooses the starting position.',
     salidaElegida: 'Starting position saved for this session. R returns here.',
+<<<<<<< HEAD
     borde: 'Terrain edge. Brake and steer away or reverse.',
     salidaFuera: 'The whole car must fit on the terrain. Choose a point farther from the edge.',
     salidaInvalida: 'No valid starting position found. Choose one with View track and Shift + click, or check the car size and allowed terrain.',
     salidaReubicada: 'The initial position was outside the terrain. The car was moved to a valid position; use WASD.',
+=======
+>>>>>>> T4
     avisos: 'You can drive. Check the wheels under “Models and settings”.',
     error: 'Some models failed to load. Check paths and the local server under “Models and settings”.',
     webgl: 'WebGL could not start. Check that your browser has graphics acceleration enabled.',
     nombres: 'Original car object names', problemas: 'Diagnostics',
+<<<<<<< HEAD
     nombresCircuito: 'Track objects', limite: 'Boundary area', todoCircuito: 'Track surface',
+=======
+>>>>>>> T4
     posicion: 'Position', rumbo: 'Heading', circuito: 'Track size', ruedas: 'Animatable wheels',
     ejes: 'Wheelbase', radio: 'Wheel radii',
   },
@@ -80,13 +104,19 @@ let vistaCircuito = false;
 let fallosCarga = false;
 let diagnosticos = [];
 let nombresCoche = [];
+<<<<<<< HEAD
 let nombresCircuito = [];
+=======
+>>>>>>> T4
 let tamañoCircuito = null;
 let vehiculo = null;
 let circuito = null;
 let suelo = null;
+<<<<<<< HEAD
 let limite = null;
 let salidaInvalida = false;
+=======
+>>>>>>> T4
 let salida = { posicion: [...CONFIG.salida.posicion], rumboGrados: CONFIG.salida.rumboGrados };
 let estado = crearEstado(salida.posicion, salida.rumboGrados);
 const teclas = new Set();
@@ -109,10 +139,15 @@ function pintarDiagnostico() {
     partes.push(`${t.ejes}: ${vehiculo.distanciaEjes.toFixed(2)} m`);
     partes.push(`${t.radio}: ${vehiculo.ruedas.map(r => `${r.nombre}=${r.radio.toFixed(3)} m`).join(', ')}`);
   }
+<<<<<<< HEAD
   if (limite) partes.push(`${t.limite}: ${CONFIG.limites.nombreZona || t.todoCircuito}`);
   if (diagnosticos.length) partes.push(`\n${t.problemas}:\n${diagnosticos.join('\n')}`);
   if (nombresCoche.length) partes.push(`\n${t.nombres}:\n${nombresCoche.join('\n')}`);
   if (nombresCircuito.length) partes.push(`\n${t.nombresCircuito}:\n${nombresCircuito.join('\n')}`);
+=======
+  if (diagnosticos.length) partes.push(`\n${t.problemas}:\n${diagnosticos.join('\n')}`);
+  if (nombresCoche.length) partes.push(`\n${t.nombres}:\n${nombresCoche.join('\n')}`);
+>>>>>>> T4
   $('lista-modelos').textContent = partes.join('\n');
 }
 
@@ -161,6 +196,13 @@ function iniciar() {
   const sol = new THREE.DirectionalLight(0xfff4dc, 3);
   sol.position.set(-20, 35, 15);
   escena.add(sol);
+<<<<<<< HEAD
+=======
+  // Rejilla orientativa, visible aunque todavía no existan los GLB.
+  const rejilla = new THREE.GridHelper(200, 100, 0x344f65, 0x698792);
+  rejilla.position.y = -0.05;
+  escena.add(rejilla);
+>>>>>>> T4
   const orbit = new OrbitControls(camara, renderer.domElement);
   orbit.enabled = false;
   orbit.enableDamping = true;
@@ -191,13 +233,18 @@ function iniciar() {
       mostrarMensaje('inspeccion');
     } else {
       camaraInmediata = true;
+<<<<<<< HEAD
       mostrarMensaje(fallosCarga ? 'error' : salidaInvalida ? 'salidaInvalida' : vehiculo?.avisos.length ? 'avisos' : 'listo');
+=======
+      mostrarMensaje(fallosCarga ? 'error' : vehiculo?.avisos.length ? 'avisos' : 'listo');
+>>>>>>> T4
     }
     $('vista').textContent = textos[idioma][inspeccionar ? 'conducir' : 'vista'];
   }
 
   function colocarCoche() {
     if (!vehiculo) return;
+<<<<<<< HEAD
     salidaInvalida = false;
     let reubicada = false;
     if (limite) {
@@ -207,6 +254,8 @@ function iniciar() {
         salida.posicion = segura;
       } else salidaInvalida = true;
     }
+=======
+>>>>>>> T4
     estado = crearEstado(salida.posicion, salida.rumboGrados);
     vehiculo.actor.position.set(...salida.posicion);
     vehiculo.actor.rotation.y = estado.rumbo;
@@ -214,20 +263,26 @@ function iniciar() {
     ajustarAltura(true);
     camaraInmediata = true;
     teclas.clear();
+<<<<<<< HEAD
     if (salidaInvalida) mostrarMensaje('salidaInvalida');
     else if (reubicada) mostrarMensaje('salidaReubicada');
     return reubicada;
+=======
+>>>>>>> T4
   }
 
   function ajustarAltura(inicial = false) {
     if (!vehiculo || !suelo || !CONFIG.circuito.seguirAlturaSuelo) return;
     // La carretera debe ser plana o de pendiente suave para este primer paso.
     const coche = vehiculo.actor;
+<<<<<<< HEAD
     if (limite) {
       const y = limite.alturaEn(coche.position.x, coche.position.z);
       if (y !== null) coche.position.y = y + 0.015;
       return;
     }
+=======
+>>>>>>> T4
     const alturaOrigen = inicial ? Math.max(cajaCircuito.max.y + 2, coche.position.y + 2) : coche.position.y + 1.5;
     gravedadRay.set(new THREE.Vector3(coche.position.x, alturaOrigen, coche.position.z), new THREE.Vector3(0, -1, 0));
     gravedadRay.far = inicial ? Math.max(20, alturaOrigen - cajaCircuito.min.y + 5) : 8;
@@ -270,22 +325,33 @@ function iniciar() {
     clicRay.setFromCamera(raton, camara);
     const impacto = clicRay.intersectObject(suelo, true)[0];
     if (!impacto) return;
+<<<<<<< HEAD
     if (limite && !limite.contiene(impacto.point.x, impacto.point.z,
       salida.rumboGrados * Math.PI / 180, vehiculo.huella)) {
       mostrarMensaje('salidaFuera');
       return;
     }
+=======
+>>>>>>> T4
     salida.posicion = impacto.point.toArray();
     colocarCoche();
     mostrarMensaje('salidaElegida');
   });
 
   cargarModelos().then(() => {
+<<<<<<< HEAD
     const reubicada = colocarCoche();
     $('vista').disabled = !circuito || !vehiculo;
     $('reiniciar').disabled = !vehiculo;
     if (fallosCarga || vehiculo?.avisos.length) $('diagnostico').open = true;
     mostrarMensaje(fallosCarga ? 'error' : salidaInvalida ? 'salidaInvalida' : vehiculo?.avisos.length ? 'avisos' : reubicada ? 'salidaReubicada' : 'listo');
+=======
+    colocarCoche();
+    $('vista').disabled = !circuito || !vehiculo;
+    $('reiniciar').disabled = !vehiculo;
+    if (fallosCarga || vehiculo?.avisos.length) $('diagnostico').open = true;
+    mostrarMensaje(fallosCarga ? 'error' : vehiculo?.avisos.length ? 'avisos' : 'listo');
+>>>>>>> T4
   });
 
   const posicionCamara = new THREE.Vector3();
@@ -297,6 +363,7 @@ function iniciar() {
     instanteAnterior = instante;
     if (vehiculo) {
       if (!vistaCircuito) {
+<<<<<<< HEAD
         let distancia = 0;
         if (!CONFIG.limites.activo || (limite && !salidaInvalida)) {
           const movimiento = avanzarConLimite(estado, teclas, dt, CONFIG.conduccion, vehiculo.distanciaEjes,
@@ -308,6 +375,9 @@ function iniciar() {
             mostrarMensaje(vehiculo.avisos.length ? 'avisos' : 'listo');
           }
         } else estado.velocidad = 0;
+=======
+        const distancia = avanzar(estado, teclas, dt, CONFIG.conduccion, vehiculo.distanciaEjes);
+>>>>>>> T4
         vehiculo.actor.position.x = estado.x;
         vehiculo.actor.position.z = estado.z;
         vehiculo.actor.rotation.y = estado.rumbo;
@@ -350,12 +420,15 @@ async function cargarModelos() {
   if (resultadoCircuito.status === 'fulfilled') {
     try {
       circuito = resultadoCircuito.value.scene;
+<<<<<<< HEAD
       circuito.traverse(objeto => {
         if (!objeto.name) return;
         const materiales = (Array.isArray(objeto.material) ? objeto.material : [objeto.material])
           .filter(Boolean).map(material => material.name).filter(Boolean);
         nombresCircuito.push(`${objeto.name} (${objeto.type})${materiales.length ? ' · ' + materiales.join(', ') : ''}`);
       });
+=======
+>>>>>>> T4
       circuito.scale.multiplyScalar(CONFIG.circuito.escala);
       circuito.rotation.y += CONFIG.circuito.giroGrados * Math.PI / 180;
       circuito.position.add(new THREE.Vector3(...CONFIG.circuito.posicion));
@@ -398,6 +471,7 @@ async function cargarModelos() {
     fallosCarga = true;
     diagnosticos.push(`Coche: ${resultadoCoche.reason}`);
   }
+<<<<<<< HEAD
   if (CONFIG.limites.activo && circuito && vehiculo) {
     try { limite = crearLimite(circuito, CONFIG.limites); }
     catch (error) {
@@ -405,5 +479,7 @@ async function cargarModelos() {
       diagnosticos.push(`Límite: ${error.message}`);
     }
   }
+=======
+>>>>>>> T4
   pintarDiagnostico();
 }
