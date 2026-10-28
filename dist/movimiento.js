@@ -13,6 +13,23 @@ export function crearEstado(posicion = [0, 0, 0], rumboGrados = 0) {
   };
 }
 
+// Mezcla asfalto/césped según las ruedas que han salido de la carretera.
+// No cambia la velocidad actual: avanzar() la ajusta de forma progresiva.
+export function conduccionEnTerreno(base, cesped, proporcion) {
+  if (!cesped.activo || !(proporcion > 0)) return base;
+  const p = Math.min(proporcion, 1);
+  const mezclar = factor => 1 + (factor - 1) * p;
+  return {
+    ...base,
+    velocidadMaxima: base.velocidadMaxima * mezclar(cesped.factorVelocidad),
+    velocidadMarchaAtras: base.velocidadMarchaAtras * mezclar(cesped.factorVelocidad),
+    aceleracion: base.aceleracion * mezclar(cesped.factorAceleracion),
+    aceleracionMarchaAtras: base.aceleracionMarchaAtras * mezclar(cesped.factorAceleracion),
+    desaceleracion: base.desaceleracion * mezclar(cesped.factorDesaceleracion),
+    frenadaExceso: cesped.frenadaExceso * p,
+  };
+}
+
 // Devuelve los metros recorridos CON SIGNO: negativo al ir marcha atrás.
 export function avanzar(estado, teclas, dt, ajustes, distanciaEjes) {
   if (!(dt > 0)) return 0;
@@ -20,16 +37,21 @@ export function avanzar(estado, teclas, dt, ajustes, distanciaEjes) {
   const velocidadAnterior = estado.velocidad;
   const acelerar = teclas.has('KeyW');
   const frenar = teclas.has('KeyS');
+  const frenadaExceso = ajustes.frenadaExceso ?? ajustes.frenada;
 
   if (acelerar && !frenar) {
     estado.velocidad = estado.velocidad < 0
       ? acercar(estado.velocidad, 0, ajustes.frenada * dt)
-      : Math.min(ajustes.velocidadMaxima, estado.velocidad + ajustes.aceleracion * dt);
+      : estado.velocidad > ajustes.velocidadMaxima
+        ? acercar(estado.velocidad, ajustes.velocidadMaxima, frenadaExceso * dt)
+        : Math.min(ajustes.velocidadMaxima, estado.velocidad + ajustes.aceleracion * dt);
   } else if (frenar && !acelerar) {
     estado.velocidad = estado.velocidad > 0
       ? acercar(estado.velocidad, 0, ajustes.frenada * dt)
-      : Math.max(-ajustes.velocidadMarchaAtras,
-          estado.velocidad - ajustes.aceleracionMarchaAtras * dt);
+      : estado.velocidad < -ajustes.velocidadMarchaAtras
+        ? acercar(estado.velocidad, -ajustes.velocidadMarchaAtras, frenadaExceso * dt)
+        : Math.max(-ajustes.velocidadMarchaAtras,
+            estado.velocidad - ajustes.aceleracionMarchaAtras * dt);
   } else {
     estado.velocidad = acercar(estado.velocidad, 0, ajustes.desaceleracion * dt);
   }
@@ -55,7 +77,8 @@ export function avanzarConLimite(estado, teclas, dt, ajustes, distanciaEjes, per
   if (!(dt > 0)) return { distancia: 0, bloqueado: false };
   dt = Math.min(dt, 0.05);
   const pasos = Math.max(1, Math.ceil(
-    Math.max(ajustes.velocidadMaxima, ajustes.velocidadMarchaAtras) * dt / Math.max(pasoMaximo, 0.02),
+    Math.max(Math.abs(estado.velocidad), ajustes.velocidadMaxima, ajustes.velocidadMarchaAtras)
+      * dt / Math.max(pasoMaximo, 0.02),
   ));
   let distancia = 0;
   for (let i = 0; i < pasos; i++) {

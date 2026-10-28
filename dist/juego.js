@@ -2,10 +2,12 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CONFIG } from './config.js';
-import { crearEstado, avanzarConLimite } from './movimiento.js';
+import { crearEstado, avanzarConLimite, conduccionEnTerreno } from './movimiento.js';
 import { crearVehiculo } from './vehiculo.js';
 import { cargarConjuntoCoche } from './modelos.js';
 import { crearLimite } from './limites.js';
+import { crearDetectorTerreno } from './terreno.js';
+import { TRAZADO, crearCarrera, iniciarCarrera, actualizarCarrera, formatearTiempo } from './carrera.js';
 
 const $ = id => document.getElementById(id);
 const textos = {
@@ -28,6 +30,7 @@ const textos = {
     nombresCircuito: 'Objetos del circuito', limite: 'Zona del límite', todoCircuito: 'Superficie del circuito',
     posicion: 'Posición', rumbo: 'Rumbo', circuito: 'Tamaño del circuito', ruedas: 'Ruedas animables',
     ejes: 'Distancia entre ejes', radio: 'Radios de las ruedas',
+    suelo: 'Suelo', asfalto: 'Asfalto', cesped: 'Césped',
   },
   ca: {
     volver: '← Tornar', prototipo: 'PROTOTIP DE CONDUCCIÓ', vista: 'Veure circuit', conducir: 'Tornar a conduir',
@@ -48,6 +51,7 @@ const textos = {
     nombresCircuito: 'Objectes del circuit', limite: 'Zona del límit', todoCircuito: 'Superfície del circuit',
     posicion: 'Posició', rumbo: 'Orientació', circuito: 'Mida del circuit', ruedas: 'Rodes animables',
     ejes: 'Distància entre eixos', radio: 'Radis de les rodes',
+    suelo: 'Terra', asfalto: 'Asfalt', cesped: 'Gespa',
   },
   en: {
     volver: '← Back', prototipo: 'DRIVING PROTOTYPE', vista: 'View track', conducir: 'Return to driving',
@@ -68,6 +72,7 @@ const textos = {
     nombresCircuito: 'Track objects', limite: 'Boundary area', todoCircuito: 'Track surface',
     posicion: 'Position', rumbo: 'Heading', circuito: 'Track size', ruedas: 'Animatable wheels',
     ejes: 'Wheelbase', radio: 'Wheel radii',
+    suelo: 'Surface', asfalto: 'Road', cesped: 'Grass',
   },
 };
 
@@ -86,6 +91,75 @@ let vehiculo = null;
 let circuito = null;
 let suelo = null;
 let limite = null;
+let detectorTerreno = null;
+let puntosRuedas = [];
+let proporcionCesped = 0;
+let carrera = null;
+let puertasCarrera = [];
+let señalesCarrera = [];
+let recordCarrera = null;
+const claveRecord = `race-circuit-record:${TRAZADO.id}:${TRAZADO.vueltas}`;
+const textosCarrera = {
+  es: { vuelta:'VUELTA', tiempo:'TIEMPO', control:'CONTROL', meta:'META', record:'RÉCORD', espera:'¿Listo para correr?', descripcion:'Completa 3 vueltas. Cruza los controles amarillos en orden y sobre el asfalto. Espacio o el botón para empezar.', empezar:'Empezar carrera', cuenta:'Prepárate', terminada:'¡Carrera completada!', otra:'Volver a correr', nuevo:'¡Nuevo récord personal!', total:'Tiempo total', parcial:'Vuelta', sinSuelo:'No se detecta el asfalto o el césped. Revisa los nombres de las superficies en Modelos y ajustes.', pausa:'PAUSA' },
+  ca: { vuelta:'VOLTA', tiempo:'TEMPS', control:'CONTROL', meta:'META', record:'RÈCORD', espera:'A punt per córrer?', descripcion:'Completa 3 voltes. Travessa els controls grocs en ordre i sobre l’asfalt. Espai o el botó per començar.', empezar:'Començar cursa', cuenta:'Prepara’t', terminada:'Cursa completada!', otra:'Tornar a córrer', nuevo:'Nou rècord personal!', total:'Temps total', parcial:'Volta', sinSuelo:'No es detecta l’asfalt o la gespa. Revisa els noms de les superfícies a Models i ajustos.', pausa:'PAUSA' },
+  en: { vuelta:'LAP', tiempo:'TIME', control:'CHECKPOINT', meta:'FINISH', record:'BEST', espera:'Ready to race?', descripcion:'Complete 3 laps. Cross the yellow checkpoints in order, on the road. Press Space or the button to start.', empezar:'Start race', cuenta:'Get ready', terminada:'Race complete!', otra:'Race again', nuevo:'New personal best!', total:'Total time', parcial:'Lap', sinSuelo:'Road or grass could not be detected. Check the surface names under Models and settings.', pausa:'PAUSED' },
+};
+
+function pintarCarrera() {
+  const t=textosCarrera[idioma];
+  $('etiqueta-vuelta').textContent=t.vuelta;
+  $('etiqueta-tiempo').textContent=t.tiempo;
+  $('etiqueta-control').textContent=t.control;
+  $('etiqueta-record').textContent=t.record;
+  $('record-carrera').textContent=recordCarrera === null ? '—' : formatearTiempo(recordCarrera);
+  $('vueltas').textContent=`${carrera ? Math.min(carrera.vueltasCompletadas+1,carrera.vueltas) : 1}/${TRAZADO.vueltas}`;
+  $('tiempo-carrera').textContent=formatearTiempo(carrera?.tiempo ?? 0);
+  $('control-carrera').textContent=vistaCircuito ? t.pausa : carrera?.control === TRAZADO.controles.length ? t.meta : `${(carrera?.control ?? 0)+1}/${TRAZADO.controles.length}`;
+  $('capa-carrera').hidden=!carrera || vistaCircuito || carrera.fase==='corriendo';
+  if (!carrera) return;
+  const final=carrera.fase==='terminada', cuenta=carrera.fase==='cuenta';
+  $('titulo-carrera').textContent=cuenta ? `${Math.ceil(carrera.cuentaAtras)}` : final ? t.terminada : t.espera;
+  $('detalle-carrera').textContent=cuenta ? t.cuenta : final ? `${t.total}: ${formatearTiempo(carrera.tiempo)}${carrera.nuevoRecord ? '\n'+t.nuevo : ''}` : detectorTerreno ? t.descripcion : t.sinSuelo;
+  $('parciales-carrera').textContent=final ? carrera.tiemposVuelta.map((v,i)=>`${t.parcial} ${i+1}: ${formatearTiempo(v)}`).join('\n') : '';
+  $('empezar-carrera').hidden=cuenta;
+  $('empezar-carrera').disabled=!detectorTerreno;
+  $('empezar-carrera').textContent=final ? t.otra : t.empezar;
+  for (let i=0;i<señalesCarrera.length;i++) {
+    señalesCarrera[i].color.setHex(i === carrera.control ? 0xffe336 : i < carrera.control ? 0x4b995c : 0x2b8494);
+  }
+}
+
+function prepararCarrera() {
+  const transformar=p=>{
+    const centro=circuito.localToWorld(new THREE.Vector3(p.x,0,p.z));
+    const normal=new THREE.Vector3(p.nx,0,p.nz).transformDirection(circuito.matrixWorld);
+    const largo=Math.hypot(p.nx,p.nz);
+    const borde=circuito.localToWorld(new THREE.Vector3(p.x-p.nz/largo*p.ancho/2,0,p.z+p.nx/largo*p.ancho/2));
+    return {x:centro.x,z:centro.z,nx:normal.x,nz:normal.z,ancho:2*Math.hypot(borde.x-centro.x,borde.z-centro.z)};
+  };
+  puertasCarrera=[...TRAZADO.controles,TRAZADO.meta].map(transformar);
+  const inicio=circuito.localToWorld(new THREE.Vector3(...TRAZADO.salida.posicion));
+  const angulo=TRAZADO.salida.rumboGrados*Math.PI/180;
+  const direccion=new THREE.Vector3(-Math.sin(angulo),0,-Math.cos(angulo)).transformDirection(circuito.matrixWorld);
+  salida={posicion:inicio.toArray(),rumboGrados:Math.atan2(-direccion.x,-direccion.z)*180/Math.PI};
+  try { const guardado=JSON.parse(localStorage.getItem(claveRecord)); if(Number.isFinite(guardado)&&guardado>0)recordCarrera=guardado; } catch { /* Opcional. */ }
+  if (TRAZADO.mostrarControles && detectorTerreno) {
+    puertasCarrera.slice(0,-1).forEach(p=>{
+      const y=detectorTerreno.alturaEn(p.x,p.z);
+      if(y===null)return;
+      const material=new THREE.MeshBasicMaterial({color:0x2b8494});
+      const grupo=new THREE.Group();
+      grupo.position.set(p.x,y+.05,p.z);
+      grupo.rotation.y=Math.atan2(p.nx,p.nz);
+      for(const x of [-p.ancho/2,p.ancho/2]) {
+        const poste=new THREE.Mesh(new THREE.BoxGeometry(.12,2.5,.12),material);poste.position.set(x,1.25,0);grupo.add(poste);
+      }
+      const travesaño=new THREE.Mesh(new THREE.BoxGeometry(p.ancho,.12,.12),material);travesaño.position.y=2.5;grupo.add(travesaño);
+      const flecha=new THREE.ArrowHelper(new THREE.Vector3(0,0,1),new THREE.Vector3(0,.12,-1.5),3,0xffe336,1,.6);grupo.add(flecha);
+      escena.add(grupo);señalesCarrera.push(material);
+    });
+  }
+}
 let salidaInvalida = false;
 let salida = { posicion: [...CONFIG.salida.posicion], rumboGrados: CONFIG.salida.rumboGrados };
 let estado = crearEstado(salida.posicion, salida.rumboGrados);
@@ -133,6 +207,7 @@ function cambiarIdioma(nuevo) {
   $('juego').setAttribute('aria-label', { es: 'Prototipo de conducción', ca: 'Prototip de conducció', en: 'Driving prototype' }[idioma]);
   mostrarMensaje(mensaje);
   pintarDiagnostico();
+  pintarCarrera();
   try { localStorage.setItem('race-circuit-language', idioma); } catch { /* Opcional. */ }
 }
 
@@ -198,6 +273,7 @@ function iniciar() {
 
   function colocarCoche() {
     if (!vehiculo) return;
+    if (puertasCarrera.length) carrera=crearCarrera(puertasCarrera,TRAZADO.vueltas,TRAZADO.cuentaAtras);
     salidaInvalida = false;
     let reubicada = false;
     if (limite) {
@@ -212,8 +288,10 @@ function iniciar() {
     vehiculo.actor.rotation.y = estado.rumbo;
     vehiculo.reiniciarRuedas();
     ajustarAltura(true);
+    proporcionCesped = detectorTerreno?.porcentajeCesped(estado, puntosRuedas) ?? 0;
     camaraInmediata = true;
     teclas.clear();
+    pintarCarrera();
     if (salidaInvalida) mostrarMensaje('salidaInvalida');
     else if (reubicada) mostrarMensaje('salidaReubicada');
     return reubicada;
@@ -223,6 +301,10 @@ function iniciar() {
     if (!vehiculo || !suelo || !CONFIG.circuito.seguirAlturaSuelo) return;
     // La carretera debe ser plana o de pendiente suave para este primer paso.
     const coche = vehiculo.actor;
+    if (detectorTerreno) {
+      const y=detectorTerreno.alturaEn(coche.position.x,coche.position.z);
+      if(y !== null) { coche.position.y=y+.015; return; }
+    }
     if (limite) {
       const y = limite.alturaEn(coche.position.x, coche.position.z);
       if (y !== null) coche.position.y = y + 0.015;
@@ -237,6 +319,14 @@ function iniciar() {
 
   $('vista').addEventListener('click', () => cambiarVista(!vistaCircuito));
   $('reiniciar').addEventListener('click', colocarCoche);
+  function empezar() {
+    if (!carrera || !detectorTerreno || vistaCircuito) return;
+    if (carrera.fase==='terminada') colocarCoche();
+    teclas.clear();
+    iniciarCarrera(carrera);
+    pintarCarrera();
+  }
+  $('empezar-carrera').addEventListener('click',empezar);
   $('idioma').addEventListener('click', () => {
     const idiomas = ['es', 'ca', 'en'];
     cambiarIdioma(idiomas[(idiomas.indexOf(idioma) + 1) % idiomas.length]);
@@ -244,6 +334,7 @@ function iniciar() {
   const esCampo = elemento => elemento?.matches('input, textarea, select, [contenteditable="true"]');
   window.addEventListener('keydown', evento => {
     if (esCampo(evento.target)) return;
+    if (evento.code==='Space' && !evento.repeat) { evento.preventDefault(); empezar(); }
     if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(evento.code)) {
       evento.preventDefault();
       if (!vistaCircuito) teclas.add(evento.code);
@@ -252,7 +343,7 @@ function iniciar() {
   });
   window.addEventListener('keyup', evento => teclas.delete(evento.code));
   window.addEventListener('blur', () => teclas.clear());
-  document.addEventListener('visibilitychange', () => { if (document.hidden) teclas.clear(); });
+  document.addEventListener('visibilitychange', () => { teclas.clear(); instanteAnterior=undefined; });
 
   // Pointerup evita colocar la salida por accidente al arrastrar la vista.
   let puntoPulsado = null;
@@ -293,13 +384,18 @@ function iniciar() {
   const objetivoSuave = new THREE.Vector3();
   let instanteAnterior;
   renderer.setAnimationLoop(instante => {
+    const tiempoReal = instanteAnterior === undefined || document.hidden ? 0 : Math.max(0,(instante-instanteAnterior)/1000);
     const dt = instanteAnterior === undefined ? 0 : Math.min((instante - instanteAnterior) / 1000, 0.05);
     instanteAnterior = instante;
     if (vehiculo) {
       if (!vistaCircuito) {
+        const anterior={x:estado.x,z:estado.z};
+        const enCarrera=carrera?.fase==='corriendo' && !document.hidden;
         let distancia = 0;
-        if (!CONFIG.limites.activo || (limite && !salidaInvalida)) {
-          const movimiento = avanzarConLimite(estado, teclas, dt, CONFIG.conduccion, vehiculo.distanciaEjes,
+        if (enCarrera && (!CONFIG.limites.activo || (limite && !salidaInvalida))) {
+          proporcionCesped = detectorTerreno?.porcentajeCesped(estado, puntosRuedas) ?? 0;
+          const conduccion = conduccionEnTerreno(CONFIG.conduccion, CONFIG.cesped, proporcionCesped);
+          const movimiento = avanzarConLimite(estado, teclas, dt, conduccion, vehiculo.distanciaEjes,
             candidato => !CONFIG.limites.activo || limite.contiene(candidato.x, candidato.z, candidato.rumbo, vehiculo.huella),
             CONFIG.limites.pasoMaximo);
           distancia = movimiento.distancia;
@@ -313,6 +409,13 @@ function iniciar() {
         vehiculo.actor.rotation.y = estado.rumbo;
         ajustarAltura();
         vehiculo.actualizarRuedas(distancia, estado.direccion);
+        if (carrera && actualizarCarrera(carrera,anterior,{...estado,avance:distancia},tiempoReal,(x,z)=>detectorTerreno?.tipoEn(x,z)==='asfalto')) {
+          estado.velocidad=0;
+          if(recordCarrera===null || carrera.tiempo<recordCarrera) {
+            recordCarrera=carrera.tiempo; carrera.nuevoRecord=true;
+            try { localStorage.setItem(claveRecord,JSON.stringify(recordCarrera)); } catch { /* Opcional. */ }
+          }
+        }
         posicionCamara.set(
           estado.x + Math.sin(estado.rumbo) * CONFIG.camara.distancia,
           vehiculo.actor.position.y + CONFIG.camara.altura,
@@ -332,9 +435,11 @@ function iniciar() {
       $('velocidad').textContent = Math.round(Math.abs(estado.velocidad) * 3.6);
       const t = textos[idioma];
       const grados = ((estado.rumbo * 180 / Math.PI) % 360 + 360) % 360;
-      $('coordenadas').textContent = `${t.posicion}: [${vehiculo.actor.position.toArray().map(v => v.toFixed(2)).join(', ')}] · ${t.rumbo}: ${grados.toFixed(1)}°`;
+      const superficie = proporcionCesped > 0 ? `${t.cesped} (${Math.round(proporcionCesped * 100)} %)` : t.asfalto;
+      $('coordenadas').textContent = `${t.posicion}: [${vehiculo.actor.position.toArray().map(v => v.toFixed(2)).join(', ')}] · ${t.rumbo}: ${grados.toFixed(1)}°${detectorTerreno ? ` · ${t.suelo}: ${superficie}` : ''}`;
     }
     if (vistaCircuito) orbit.update();
+    pintarCarrera();
     renderer.render(escena, camara);
   });
 }
@@ -405,5 +510,23 @@ async function cargarModelos() {
       diagnosticos.push(`Límite: ${error.message}`);
     }
   }
+  if (circuito && vehiculo) {
+    try {
+      const detector = crearDetectorTerreno(circuito, CONFIG.cesped);
+      diagnosticos.push(...detector.avisos);
+      if (detector.disponible) detectorTerreno = detector;
+      else $('diagnostico').open = true;
+      // Usa los centros reales de las 4 ruedas, ya corregidos al montar el GLB.
+      puntosRuedas = vehiculo.ruedas.length === 4
+        ? vehiculo.ruedas.map(rueda => ({ x: rueda.centro.x, z: rueda.centro.z }))
+        : [-1, 1].flatMap(lado => [-1, 1].map(eje => ({
+            x: lado * vehiculo.huella.semiancho * 0.85,
+            z: eje * vehiculo.huella.semilargo * 0.65,
+          })));
+    } catch (error) {
+      diagnosticos.push(`Césped: ${error.message}`);
+    }
+  }
+  if(circuito && vehiculo) prepararCarrera();
   pintarDiagnostico();
 }

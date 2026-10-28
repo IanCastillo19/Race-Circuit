@@ -23,6 +23,18 @@
       <div class="marca"><span>RACE CIRCUIT</span><small id="etiqueta-prototipo">PROTOTIPO DE CONDUCCIÓN</small></div>
       <div class="velocimetro"><strong id="velocidad">0</strong><span>km/h</span></div>
     </header>
+    <section class="marcador-carrera" aria-label="Carrera">
+      <div><small id="etiqueta-vuelta">VUELTA</small><strong id="vueltas">1/3</strong></div>
+      <div><small id="etiqueta-tiempo">TIEMPO</small><strong id="tiempo-carrera">00:00.000</strong></div>
+      <div><small id="etiqueta-control">CONTROL</small><strong id="control-carrera">1/11</strong></div>
+      <div><small id="etiqueta-record">RÉCORD</small><strong id="record-carrera">—</strong></div>
+    </section>
+    <section id="capa-carrera" class="capa-carrera" hidden>
+      <h1 id="titulo-carrera">¿Listo para correr?</h1>
+      <p id="detalle-carrera"></p>
+      <p id="parciales-carrera"></p>
+      <button id="empezar-carrera" class="boton" type="button" disabled>Empezar carrera</button>
+    </section>
     <section class="panel" aria-label="Controles y estado">
       <p class="controles" id="controles"><kbd>W</kbd> acelerar · <kbd>S</kbd> frenar / marcha atrás · <kbd>A</kbd><kbd>D</kbd> dirección</p>
       <p id="estado" role="status">Cargando… Si no avanza, abre esta página con un servidor local y conexión a Internet.</p>
