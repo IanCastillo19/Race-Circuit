@@ -2,7 +2,6 @@
 // Three.js usa metros en esta base. El coche mira hacia -Z; Y es arriba.
 export const CONFIG = {
   modelos: {
-<<<<<<< HEAD
     chasis: './assets/Modelos/modelos_prototipos/Chasis.glb',
     ruedasDelanteras: './assets/Modelos/modelos_prototipos/RuedasD.glb',
     ruedasTraseras: './assets/Modelos/modelos_prototipos/RuedasT.glb',
@@ -11,16 +10,6 @@ export const CONFIG = {
   coche: {
     longitudMetros: 4.2,       // Ajusta el tamaño de todo el coche de forma uniforme.
     giroModeloGrados: -90,     // Corrige el avance lateral. Si queda de culo, usa -90.
-=======
-    chasis: 'assets/Modelos/modelos_prototipos/Chasis.glb',
-    ruedasDelanteras: 'assets/Modelos/modelos_prototipos/RuedasD.glb',
-    ruedasTraseras: 'assets/Modelos/modelos_prototipos/RuedasT.glb',
-    circuito: 'assets/Modelos/modelos_prototipos/Circuito.glb',
-  },
-  coche: {
-    longitudMetros: 4.2,       // Ajusta el tamaño de todo el coche de forma uniforme.
-    giroModeloGrados: 0,      // Si mira hacia +Z: 180. Si mira hacia ±X: prueba ±90.
->>>>>>> T4
     radioRuedaMetros: null,   // null = calcular a partir de las ruedas del modelo.
     distanciaEjesMetros: null,// null = calcular entre ruedas delanteras y traseras.
     sentidoRodadura: 1,       // Mantén 1 para un coche que mira hacia -Z.
@@ -45,7 +34,6 @@ export const CONFIG = {
     nombreSuelo: null,        // Mejor: nombre de la malla de carretera, p. ej. 'Carretera'.
     seguirAlturaSuelo: true,  // Sigue la altura, pero todavía no inclina el coche.
   },
-<<<<<<< HEAD
   limites: {
     activo: true,
     nombreZona: null,         // null = superficie del circuito. O el nombre de la malla/grupo del terreno permitido.
@@ -53,8 +41,6 @@ export const CONFIG = {
     pasoMaximo: 0.2,         // Comprueba el recorrido en pasos cortos para no saltar un borde.
     normalMinimaY: 0.55,      // Ignora paredes verticales al buscar terreno.
   },
-=======
->>>>>>> T4
   salida: {
     posicion: [0, 0, 0],      // X, Y, Z. Puedes elegirla con Mayús + clic en el circuito.
     rumboGrados: 0,          // Orientación inicial del jugador, independiente del GLB.
@@ -70,15 +56,9 @@ export const CONFIG = {
     respuestaDireccion: 9,
   },
   camara: {
-<<<<<<< HEAD
     distancia: 12,
     altura: 6.5,
     mirarDelante: 4,
-=======
-    distancia: 5,
-    altura: 3.2,
-    mirarDelante: 2,
->>>>>>> T4
     suavidad: 7,
   },
 };

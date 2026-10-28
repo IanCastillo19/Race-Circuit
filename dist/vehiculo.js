@@ -149,11 +149,8 @@ export function crearVehiculo(modelo, config, ejes = {}) {
 
   return {
     actor, ruedas, avisos, distanciaEjes,
-<<<<<<< HEAD
     huella: { semiancho: caja.getSize(new THREE.Vector3()).x / 2,
       semilargo: caja.getSize(new THREE.Vector3()).z / 2 },
-=======
->>>>>>> T4
     actualizarRuedas(distancia, anguloDireccion) {
       for (const rueda of ruedas) {
         rueda.direccion.rotation.y = rueda.delantera ? anguloDireccion : 0;

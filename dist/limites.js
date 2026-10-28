@@ -36,7 +36,7 @@ export function crearLimite(circuito, config) {
       }
       matrizNormal.getNormalMatrix(transformacion);
       normal.copy(impacto.face.normal).applyMatrix3(matrizNormal).normalize();
-      if (normal.y >= config.normalMinimaY) return impacto.point.y;
+      if (Math.abs(normal.y) >= config.normalMinimaY) return impacto.point.y;
     }
     return null;
   }

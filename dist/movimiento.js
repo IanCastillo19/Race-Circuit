@@ -49,7 +49,6 @@ export function avanzar(estado, teclas, dt, ajustes, distanciaEjes) {
   estado.rumbo += cambioRumbo;
   return distancia;
 }
-<<<<<<< HEAD
 
 // Comprueba también el recorrido intermedio, no solo el destino del fotograma.
 export function avanzarConLimite(estado, teclas, dt, ajustes, distanciaEjes, permitida, pasoMaximo = 0.2) {
@@ -71,5 +70,3 @@ export function avanzarConLimite(estado, teclas, dt, ajustes, distanciaEjes, per
   }
   return { distancia, bloqueado: false };
 }
-=======
->>>>>>> T4
