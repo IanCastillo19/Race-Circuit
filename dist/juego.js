@@ -8,6 +8,8 @@ import { cargarConjuntoCoche } from './modelos.js';
 import { crearLimite } from './limites.js';
 import { crearDetectorTerreno } from './terreno.js';
 import { TRAZADO, crearCarrera, iniciarCarrera, actualizarCarrera, formatearTiempo } from './carrera.js';
+import { MEJORAS, crearNitro, reiniciarNitro, actualizarNitro, ajustarConduccion } from './nitro.js';
+import { crearZonasNitro } from './nitro-modelos.js';
 
 const $ = id => document.getElementById(id);
 const textos = {
@@ -98,6 +100,8 @@ let carrera = null;
 let puertasCarrera = [];
 let señalesCarrera = [];
 let recordCarrera = null;
+let nitro = null;
+let zonasNitro = null;
 const claveRecord = `race-circuit-record:${TRAZADO.id}:${TRAZADO.vueltas}`;
 const textosCarrera = {
   es: { vuelta:'VUELTA', tiempo:'TIEMPO', control:'CONTROL', meta:'META', record:'RÉCORD', espera:'¿Listo para correr?', descripcion:'Completa 3 vueltas. Cruza los controles amarillos en orden y sobre el asfalto. Espacio o el botón para empezar.', empezar:'Empezar carrera', cuenta:'Prepárate', terminada:'¡Carrera completada!', otra:'Volver a correr', nuevo:'¡Nuevo récord personal!', total:'Tiempo total', parcial:'Vuelta', sinSuelo:'No se detecta el asfalto o el césped. Revisa los nombres de las superficies en Modelos y ajustes.', pausa:'PAUSA' },
@@ -107,6 +111,7 @@ const textosCarrera = {
 
 function pintarCarrera() {
   const t=textosCarrera[idioma];
+  $('nitro-tiempo').textContent=nitro?.restante>0 ? `${nitro.restante.toFixed(1)} s` : '—';
   $('etiqueta-vuelta').textContent=t.vuelta;
   $('etiqueta-tiempo').textContent=t.tiempo;
   $('etiqueta-control').textContent=t.control;
@@ -284,6 +289,7 @@ function iniciar() {
       } else salidaInvalida = true;
     }
     estado = crearEstado(salida.posicion, salida.rumboGrados);
+    if(nitro) { reiniciarNitro(nitro,estado);zonasNitro.actualizar(nitro); }
     vehiculo.actor.position.set(...salida.posicion);
     vehiculo.actor.rotation.y = estado.rumbo;
     vehiculo.reiniciarRuedas();
@@ -394,8 +400,16 @@ function iniciar() {
         let distancia = 0;
         if (enCarrera && (!CONFIG.limites.activo || (limite && !salidaInvalida))) {
           proporcionCesped = detectorTerreno?.porcentajeCesped(estado, puntosRuedas) ?? 0;
-          const conduccion = conduccionEnTerreno(CONFIG.conduccion, CONFIG.cesped, proporcionCesped);
-          const movimiento = avanzarConLimite(estado, teclas, dt, conduccion, vehiculo.distanciaEjes,
+          const mejorada=ajustarConduccion(CONFIG.conduccion,estado.velocidad,nitro);
+          const conduccion = conduccionEnTerreno(mejorada, CONFIG.cesped, proporcionCesped);
+          // El turbo impulsa también sin mantener W. S conserva prioridad de freno.
+          let entrada=teclas;
+          if(nitro?.restante>0) {
+            entrada=new Set(teclas);
+            if(entrada.has('KeyS'))entrada.delete('KeyW');
+            else if(estado.velocidad>=0)entrada.add('KeyW');
+          }
+          const movimiento = avanzarConLimite(estado, entrada, dt, conduccion, vehiculo.distanciaEjes,
             candidato => !CONFIG.limites.activo || limite.contiene(candidato.x, candidato.z, candidato.rumbo, vehiculo.huella),
             CONFIG.limites.pasoMaximo);
           distancia = movimiento.distancia;
@@ -409,8 +423,13 @@ function iniciar() {
         vehiculo.actor.rotation.y = estado.rumbo;
         ajustarAltura();
         vehiculo.actualizarRuedas(distancia, estado.direccion);
+        if(enCarrera && nitro) {
+          actualizarNitro(nitro,anterior,{...estado,avance:distancia},tiempoReal,(x,z)=>detectorTerreno?.tipoEn(x,z)==='asfalto');
+          zonasNitro.actualizar(nitro);
+        }
         if (carrera && actualizarCarrera(carrera,anterior,{...estado,avance:distancia},tiempoReal,(x,z)=>detectorTerreno?.tipoEn(x,z)==='asfalto')) {
           estado.velocidad=0;
+          if(nitro)nitro.restante=0;
           if(recordCarrera===null || carrera.tiempo<recordCarrera) {
             recordCarrera=carrera.tiempo; carrera.nuevoRecord=true;
             try { localStorage.setItem(claveRecord,JSON.stringify(recordCarrera)); } catch { /* Opcional. */ }
@@ -528,5 +547,11 @@ async function cargarModelos() {
     }
   }
   if(circuito && vehiculo) prepararCarrera();
+  if(circuito && detectorTerreno) {
+    zonasNitro=await crearZonasNitro(loader,circuito,detectorTerreno,escena,MEJORAS);
+    nitro=crearNitro(zonasNitro.zonas);
+    diagnosticos.push(...zonasNitro.avisos);
+    if(zonasNitro.avisos.length)$('diagnostico').open=true;
+  }
   pintarDiagnostico();
 }
