@@ -8,11 +8,11 @@ export const CONFIG = {
     circuito: './assets/Modelos/modelos_prototipos/Circuito.glb',
   },
   coche: {
-    longitudMetros: 4.2,       // Ajusta el tamaño de todo el coche de forma uniforme.
-    giroModeloGrados: -90,     // Corrige el avance lateral. Si queda de culo, usa -90.
-    radioRuedaMetros: null,   // null = calcular a partir de las ruedas del modelo.
-    distanciaEjesMetros: null,// null = calcular entre ruedas delanteras y traseras.
-    sentidoRodadura: 1,       // Mantén 1 para un coche que mira hacia -Z.
+    longitudMetros: 4.2, // Ajusta el tamaño de todo el coche de forma uniforme.
+    giroModeloGrados: -90, // Corrige el avance lateral. Si queda de culo, usa -90.
+    radioRuedaMetros: null, // null = calcular a partir de las ruedas del modelo.
+    distanciaEjesMetros: null, // null = calcular entre ruedas delanteras y traseras.
+    sentidoRodadura: 1, // Mantén 1 para un coche que mira hacia -Z.
     // Si todas las piezas se exportaron desde la misma escena de Blender,
     // conserva estos ajustes. No recentres cada pieza por separado al exportar.
     piezas: {
@@ -28,41 +28,41 @@ export const CONFIG = {
     },
   },
   circuito: {
-    escala: 1,                // Ejemplo: 0.01 si el circuito está 100 veces más grande.
+    escala: 1, // Ejemplo: 0.01 si el circuito está 100 veces más grande.
     giroGrados: 0,
     posicion: [0, 0, 0],
-    nombreSuelo: null,        // Mejor: nombre de la malla de carretera, p. ej. 'Carretera'.
-    seguirAlturaSuelo: true,  // Sigue la altura, pero todavía no inclina el coche.
+    nombreSuelo: null, // Mejor: nombre de la malla de carretera, p. ej. 'Carretera'.
+    seguirAlturaSuelo: true, // Sigue la altura, pero todavía no inclina el coche.
   },
   limites: {
     activo: true,
-    nombreZona: null,         // null = superficie del circuito. O el nombre de la malla/grupo del terreno permitido.
-    margen: 0.1,             // Separación adicional del borde, en metros.
-    pasoMaximo: 0.2,         // Comprueba el recorrido en pasos cortos para no saltar un borde.
-    normalMinimaY: 0.55,      // Ignora paredes verticales al buscar terreno.
+    nombreZona: null, // null = superficie del circuito. O el nombre de la malla/grupo del terreno permitido.
+    margen: 0.1, // Separación adicional del borde, en metros.
+    pasoMaximo: 0.2, // Comprueba el recorrido en pasos cortos para no saltar un borde.
+    normalMinimaY: 0.55, // Ignora paredes verticales al buscar terreno.
   },
   salida: {
-    posicion: [0, 0, 0],      // X, Y, Z. Puedes elegirla con Mayús + clic en el circuito.
-    rumboGrados: 0,          // Orientación inicial del jugador, independiente del GLB.
+    posicion: [0, 0, 0], // X, Y, Z. Puedes elegirla con Mayús + clic en el circuito.
+    rumboGrados: 0, // Orientación inicial del jugador, independiente del GLB.
   },
   conduccion: {
-    velocidadMaxima: 25,      // m/s: aproximadamente 58 km/h.
+    velocidadMaxima: 25, // m/s: 90 km/h.
     velocidadMarchaAtras: 5,
     aceleracion: 3,
     aceleracionMarchaAtras: 4,
     frenada: 6,
-    desaceleracion: 1.5,        // Pérdida de velocidad al soltar W/S.
+    desaceleracion: 1.5, // Pérdida de velocidad al soltar W/S.
     giroMaximoGrados: 30,
     respuestaDireccion: 9,
   },
   cesped: {
     activo: true,
-    nombresCesped: ['Plane002'],       // Malla verde del Circuito.glb actual.
+    nombresCesped: ['Plane002'], // Malla verde del Circuito.glb actual.
     nombresAsfalto: ['Plane', 'Plane001'], // Carretera y zona de meta; excluye decoración.
-    factorVelocidad: 0.4,              // Con 4 ruedas fuera: 40 % de la velocidad máxima.
-    factorAceleracion: 0.45,           // Con 4 ruedas fuera: 45 % de la aceleración.
-    factorDesaceleracion: 3,           // Más resistencia al soltar el acelerador.
-    frenadaExceso: 4,                  // m/s²: reduce progresivamente el exceso de velocidad.
+    factorVelocidad: 0.4, // Con 4 ruedas fuera: 40 % de la velocidad máxima.
+    factorAceleracion: 0.45, // Con 4 ruedas fuera: 45 % de la aceleración.
+    factorDesaceleracion: 3, // Más resistencia al soltar el acelerador.
+    frenadaExceso: 4, // m/s²: reduce progresivamente el exceso de velocidad.
   },
   camara: {
     distancia: 12,

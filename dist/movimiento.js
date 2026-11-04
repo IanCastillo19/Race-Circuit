@@ -1,15 +1,15 @@
 // Lógica sin DOM ni WebGL: facilita ajustar y comprobar la conducción.
 export function acercar(valor, objetivo, paso) {
-  return valor < objetivo
-    ? Math.min(valor + paso, objetivo)
-    : Math.max(valor - paso, objetivo);
+  return valor < objetivo ? Math.min(valor + paso, objetivo) : Math.max(valor - paso, objetivo);
 }
 
 export function crearEstado(posicion = [0, 0, 0], rumboGrados = 0) {
   return {
-    x: posicion[0], z: posicion[2],
-    rumbo: rumboGrados * Math.PI / 180,
-    velocidad: 0, direccion: 0,
+    x: posicion[0],
+    z: posicion[2],
+    rumbo: (rumboGrados * Math.PI) / 180,
+    velocidad: 0,
+    direccion: 0,
   };
 }
 
@@ -18,7 +18,7 @@ export function crearEstado(posicion = [0, 0, 0], rumboGrados = 0) {
 export function conduccionEnTerreno(base, cesped, proporcion) {
   if (!cesped.activo || !(proporcion > 0)) return base;
   const p = Math.min(proporcion, 1);
-  const mezclar = factor => 1 + (factor - 1) * p;
+  const mezclar = (factor) => 1 + (factor - 1) * p;
   return {
     ...base,
     velocidadMaxima: base.velocidadMaxima * mezclar(cesped.factorVelocidad),
@@ -40,31 +40,35 @@ export function avanzar(estado, teclas, dt, ajustes, distanciaEjes) {
   const frenadaExceso = ajustes.frenadaExceso ?? ajustes.frenada;
 
   if (acelerar && !frenar) {
-    estado.velocidad = estado.velocidad < 0
-      ? acercar(estado.velocidad, 0, ajustes.frenada * dt)
-      : estado.velocidad > ajustes.velocidadMaxima
-        ? acercar(estado.velocidad, ajustes.velocidadMaxima, frenadaExceso * dt)
-        : Math.min(ajustes.velocidadMaxima, estado.velocidad + ajustes.aceleracion * dt);
+    estado.velocidad =
+      estado.velocidad < 0
+        ? acercar(estado.velocidad, 0, ajustes.frenada * dt)
+        : estado.velocidad > ajustes.velocidadMaxima
+          ? acercar(estado.velocidad, ajustes.velocidadMaxima, frenadaExceso * dt)
+          : Math.min(ajustes.velocidadMaxima, estado.velocidad + ajustes.aceleracion * dt);
   } else if (frenar && !acelerar) {
-    estado.velocidad = estado.velocidad > 0
-      ? acercar(estado.velocidad, 0, ajustes.frenada * dt)
-      : estado.velocidad < -ajustes.velocidadMarchaAtras
-        ? acercar(estado.velocidad, -ajustes.velocidadMarchaAtras, frenadaExceso * dt)
-        : Math.max(-ajustes.velocidadMarchaAtras,
-            estado.velocidad - ajustes.aceleracionMarchaAtras * dt);
+    estado.velocidad =
+      estado.velocidad > 0
+        ? acercar(estado.velocidad, 0, ajustes.frenada * dt)
+        : estado.velocidad < -ajustes.velocidadMarchaAtras
+          ? acercar(estado.velocidad, -ajustes.velocidadMarchaAtras, frenadaExceso * dt)
+          : Math.max(
+              -ajustes.velocidadMarchaAtras,
+              estado.velocidad - ajustes.aceleracionMarchaAtras * dt,
+            );
   } else {
     estado.velocidad = acercar(estado.velocidad, 0, ajustes.desaceleracion * dt);
   }
 
   const lado = Number(teclas.has('KeyA')) - Number(teclas.has('KeyD'));
-  const objetivo = lado * ajustes.giroMaximoGrados * Math.PI / 180;
+  const objetivo = (lado * ajustes.giroMaximoGrados * Math.PI) / 180;
   const direccionAnterior = estado.direccion;
-  estado.direccion += (objetivo - estado.direccion)
-    * (1 - Math.exp(-ajustes.respuestaDireccion * dt));
+  estado.direccion +=
+    (objetivo - estado.direccion) * (1 - Math.exp(-ajustes.respuestaDireccion * dt));
 
   const distancia = (velocidadAnterior + estado.velocidad) * 0.5 * dt;
   const direccionMedia = (direccionAnterior + estado.direccion) * 0.5;
-  const cambioRumbo = distancia / Math.max(distanciaEjes, 0.1) * Math.tan(direccionMedia);
+  const cambioRumbo = (distancia / Math.max(distanciaEjes, 0.1)) * Math.tan(direccionMedia);
   const rumboMedio = estado.rumbo + cambioRumbo * 0.5;
   estado.x -= Math.sin(rumboMedio) * distancia;
   estado.z -= Math.cos(rumboMedio) * distancia;
@@ -73,13 +77,25 @@ export function avanzar(estado, teclas, dt, ajustes, distanciaEjes) {
 }
 
 // Comprueba también el recorrido intermedio, no solo el destino del fotograma.
-export function avanzarConLimite(estado, teclas, dt, ajustes, distanciaEjes, permitida, pasoMaximo = 0.2) {
+export function avanzarConLimite(
+  estado,
+  teclas,
+  dt,
+  ajustes,
+  distanciaEjes,
+  permitida,
+  pasoMaximo = 0.2,
+) {
   if (!(dt > 0)) return { distancia: 0, bloqueado: false };
   dt = Math.min(dt, 0.05);
-  const pasos = Math.max(1, Math.ceil(
-    Math.max(Math.abs(estado.velocidad), ajustes.velocidadMaxima, ajustes.velocidadMarchaAtras)
-      * dt / Math.max(pasoMaximo, 0.02),
-  ));
+  const pasos = Math.max(
+    1,
+    Math.ceil(
+      (Math.max(Math.abs(estado.velocidad), ajustes.velocidadMaxima, ajustes.velocidadMarchaAtras) *
+        dt) /
+        Math.max(pasoMaximo, 0.02),
+    ),
+  );
   let distancia = 0;
   for (let i = 0; i < pasos; i++) {
     const anterior = { x: estado.x, z: estado.z, rumbo: estado.rumbo };

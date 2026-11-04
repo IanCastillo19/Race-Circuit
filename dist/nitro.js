@@ -18,52 +18,77 @@ export const MEJORAS = {
 };
 
 function distanciaSegmento(a, b, p) {
-  const dx=b.x-a.x, dz=b.z-a.z, longitud=dx*dx+dz*dz;
-  const t=longitud > 0 ? Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/longitud)) : 0;
-  return {distancia:Math.hypot(a.x+dx*t-p.x,a.z+dz*t-p.z),x:a.x+dx*t,z:a.z+dz*t};
+  const dx = b.x - a.x,
+    dz = b.z - a.z,
+    longitud = dx * dx + dz * dz;
+  const t =
+    longitud > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / longitud)) : 0;
+  return {
+    distancia: Math.hypot(a.x + dx * t - p.x, a.z + dz * t - p.z),
+    x: a.x + dx * t,
+    z: a.z + dz * t,
+  };
 }
 
 export function crearNitro(zonas, config = MEJORAS) {
-  return {restante:0,config,zonas:zonas.map(p=>({...p,recarga:0,ocupada:false}))};
+  return { restante: 0, config, zonas: zonas.map((p) => ({ ...p, recarga: 0, ocupada: false })) };
 }
 
 export function reiniciarNitro(nitro, posicion) {
-  nitro.restante=0;
-  for(const zona of nitro.zonas) {
-    zona.recarga=0;
-    zona.ocupada=posicion ? Math.hypot(posicion.x-zona.x,posicion.z-zona.z)<=zona.radio : false;
+  nitro.restante = 0;
+  for (const zona of nitro.zonas) {
+    zona.recarga = 0;
+    zona.ocupada = posicion
+      ? Math.hypot(posicion.x - zona.x, posicion.z - zona.z) <= zona.radio
+      : false;
   }
 }
 
 // Solo se llama durante la carrera: las pausas también pausan efecto y recarga.
-export function actualizarNitro(nitro, anterior, actual, dt, enAsfalto=()=>true) {
-  if (!(dt>0) || !Number.isFinite(dt)) return false;
-  nitro.restante=Math.max(0,nitro.restante-dt);
-  let activado=false;
-  for(const zona of nitro.zonas) {
-    zona.recarga=Math.max(0,zona.recarga-dt);
-    const antesOcupada=zona.ocupada;
-    const dentro=Math.hypot(actual.x-zona.x,actual.z-zona.z)<=zona.radio;
-    const paso=distanciaSegmento(anterior,actual,zona);
-    const seMueve=(actual.avance??actual.velocidad)>0;
-    if (!antesOcupada && paso.distancia<=zona.radio && seMueve) {
-      zona.ocupada=true;
-      if (zona.recarga===0 && nitro.restante===0 && enAsfalto(paso.x,paso.z)) {
-        nitro.restante=nitro.config.duracion;
-        zona.recarga=nitro.config.recarga;
-        activado=true;
+export function actualizarNitro(
+  nitro,
+  anterior,
+  actual,
+  dt,
+  enAsfalto = () => true,
+  compartidas = null,
+) {
+  if (!(dt > 0) || !Number.isFinite(dt)) return false;
+  nitro.restante = Math.max(0, nitro.restante - dt);
+  let activado = false;
+  for (const [indice, zona] of nitro.zonas.entries()) {
+    zona.recarga = compartidas ? compartidas[indice].recarga : Math.max(0, zona.recarga - dt);
+    const antesOcupada = zona.ocupada;
+    const dentro = Math.hypot(actual.x - zona.x, actual.z - zona.z) <= zona.radio;
+    const paso = distanciaSegmento(anterior, actual, zona);
+    const seMueve = (actual.avance ?? actual.velocidad) > 0;
+    if (!antesOcupada && paso.distancia <= zona.radio && seMueve) {
+      zona.ocupada = true;
+      if (zona.recarga === 0 && nitro.restante === 0 && enAsfalto(paso.x, paso.z)) {
+        nitro.restante = nitro.config.duracion;
+        zona.recarga = nitro.config.recarga;
+        if (compartidas) compartidas[indice].recarga = zona.recarga;
+        activado = true;
       }
-    } else if (!dentro && Math.hypot(actual.x-zona.x,actual.z-zona.z)>zona.radio+.3) zona.ocupada=false;
+    } else if (!dentro && Math.hypot(actual.x - zona.x, actual.z - zona.z) > zona.radio + 0.3)
+      zona.ocupada = false;
   }
   return activado;
 }
 
 export function ajustarConduccion(base, velocidad, nitro, config = MEJORAS) {
-  const t=Math.min(1,Math.abs(velocidad)/Math.max(base.velocidadMaxima,1));
-  const suave=t*t*(3-2*t);
-  const giro=Math.min(base.giroMaximoGrados,config.direccion.gradosLento+(config.direccion.gradosRapido-config.direccion.gradosLento)*suave);
-  const activo=nitro?.restante>0;
-  return {...base, giroMaximoGrados:giro,
-    velocidadMaxima:base.velocidadMaxima*(activo?config.factorVelocidad:1),
-    aceleracion:base.aceleracion*(activo?config.factorAceleracion:1)};
+  const t = Math.min(1, Math.abs(velocidad) / Math.max(base.velocidadMaxima, 1));
+  const suave = t * t * (3 - 2 * t);
+  const giro = Math.min(
+    base.giroMaximoGrados,
+    config.direccion.gradosLento +
+      (config.direccion.gradosRapido - config.direccion.gradosLento) * suave,
+  );
+  const activo = nitro?.restante > 0;
+  return {
+    ...base,
+    giroMaximoGrados: giro,
+    velocidadMaxima: base.velocidadMaxima * (activo ? config.factorVelocidad : 1),
+    aceleracion: base.aceleracion * (activo ? config.factorAceleracion : 1),
+  };
 }

@@ -4,554 +4,962 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CONFIG } from './config.js';
 import { crearEstado, avanzarConLimite, conduccionEnTerreno } from './movimiento.js';
 import { crearVehiculo } from './vehiculo.js';
-import { cargarConjuntoCoche } from './modelos.js';
-import { crearLimite } from './limites.js';
+import { cargarConjuntoCoche, clonarConjuntoCoche } from './modelos.js';
 import { crearDetectorTerreno } from './terreno.js';
-import { TRAZADO, crearCarrera, iniciarCarrera, actualizarCarrera, formatearTiempo } from './carrera.js';
-import { MEJORAS, crearNitro, reiniciarNitro, actualizarNitro, ajustarConduccion } from './nitro.js';
+import { crearLimite } from './limites.js';
+import {
+  TRAZADO,
+  crearCarrera,
+  iniciarCarrera,
+  actualizarCarrera,
+  formatearTiempo,
+} from './carrera.js';
+import {
+  MEJORAS,
+  crearNitro,
+  reiniciarNitro,
+  actualizarNitro,
+  ajustarConduccion,
+} from './nitro.js';
 import { crearZonasNitro } from './nitro-modelos.js';
+import { AJUSTES } from './ajustes-juego.js';
+import {
+  circuloContraCoche,
+  separacionCoches,
+  resolverGanador,
+  dividirPantallas,
+} from './colisiones.js';
+import { crearObjetos, crearSenales, crearAmbiente } from './objetos.js';
+import { crearInterfaz, crearMinimapa, TEXTOS } from './interfaz.js';
+import { crearAudio } from './audio.js';
+import { leerMarca, guardarMarca } from './records.js';
 
-const $ = id => document.getElementById(id);
-const textos = {
-  es: {
-    volver: '← Volver', prototipo: 'PROTOTIPO DE CONDUCCIÓN', vista: 'Ver circuito', conducir: 'Volver a conducir',
-    reiniciar: 'Reiniciar · R', diagnostico: 'Modelos y ajustes',
-    controles: '<kbd>W</kbd> acelerar · <kbd>S</kbd> frenar / marcha atrás · <kbd>A</kbd><kbd>D</kbd> dirección',
-    salida: 'En la vista del circuito: Mayús + clic sobre la carretera para elegir la salida.',
-    cargando: 'Cargando los modelos…', listo: 'Listo. Usa WASD para conducir.',
-    inspeccion: 'Arrastra para mirar el circuito; usa la rueda del ratón para acercarte. Mayús + clic elige la salida.',
-    salidaElegida: 'Salida guardada para esta sesión. R vuelve a este punto.',
-    borde: 'Límite del terreno. Frena y cambia de dirección o retrocede.',
-    salidaFuera: 'El coche completo debe caber dentro del terreno. Elige un punto más alejado del borde.',
-    salidaInvalida: 'No se encuentra una salida válida. Elige una con Ver circuito y Mayús + clic, o revisa el tamaño del coche y la zona del límite.',
-    salidaReubicada: 'El punto inicial estaba fuera del terreno. Se ha colocado el coche en una zona válida; usa WASD.',
-    avisos: 'El coche se puede mover. Revisa las ruedas en «Modelos y ajustes».',
-    error: 'No se han podido cargar todos los modelos. Revisa las rutas y el servidor en «Modelos y ajustes».',
-    webgl: 'No se ha podido iniciar WebGL. Comprueba que tu navegador tenga aceleración gráfica.',
-    nombres: 'Nombres originales del coche', problemas: 'Diagnóstico',
-    nombresCircuito: 'Objetos del circuito', limite: 'Zona del límite', todoCircuito: 'Superficie del circuito',
-    posicion: 'Posición', rumbo: 'Rumbo', circuito: 'Tamaño del circuito', ruedas: 'Ruedas animables',
-    ejes: 'Distancia entre ejes', radio: 'Radios de las ruedas',
-    suelo: 'Suelo', asfalto: 'Asfalto', cesped: 'Césped',
-  },
-  ca: {
-    volver: '← Tornar', prototipo: 'PROTOTIP DE CONDUCCIÓ', vista: 'Veure circuit', conducir: 'Tornar a conduir',
-    reiniciar: 'Reiniciar · R', diagnostico: 'Models i ajustos',
-    controles: '<kbd>W</kbd> accelerar · <kbd>S</kbd> frenar / marxa enrere · <kbd>A</kbd><kbd>D</kbd> direcció',
-    salida: 'A la vista del circuit: Majúscules + clic sobre la carretera per triar la sortida.',
-    cargando: 'Carregant els models…', listo: 'A punt. Fes servir WASD per conduir.',
-    inspeccion: 'Arrossega per mirar el circuit; fes servir la roda del ratolí per apropar-te. Majúscules + clic tria la sortida.',
-    salidaElegida: 'Sortida desada per a aquesta sessió. R torna a aquest punt.',
-    borde: 'Límit del terreny. Frena i canvia de direcció o fes marxa enrere.',
-    salidaFuera: 'El cotxe sencer ha de cabre dins del terreny. Tria un punt més allunyat de la vora.',
-    salidaInvalida: 'No es troba una sortida vàlida. Tria-la amb Veure circuit i Majúscules + clic, o revisa la mida del cotxe i la zona del límit.',
-    salidaReubicada: 'El punt inicial era fora del terreny. El cotxe s’ha col·locat en una zona vàlida; fes servir WASD.',
-    avisos: 'El cotxe es pot moure. Revisa les rodes a «Models i ajustos».',
-    error: 'No s’han pogut carregar tots els models. Revisa les rutes i el servidor a «Models i ajustos».',
-    webgl: 'No s’ha pogut iniciar WebGL. Comprova que el navegador tingui acceleració gràfica.',
-    nombres: 'Noms originals del cotxe', problemas: 'Diagnòstic',
-    nombresCircuito: 'Objectes del circuit', limite: 'Zona del límit', todoCircuito: 'Superfície del circuit',
-    posicion: 'Posició', rumbo: 'Orientació', circuito: 'Mida del circuit', ruedas: 'Rodes animables',
-    ejes: 'Distància entre eixos', radio: 'Radis de les rodes',
-    suelo: 'Terra', asfalto: 'Asfalt', cesped: 'Gespa',
-  },
-  en: {
-    volver: '← Back', prototipo: 'DRIVING PROTOTYPE', vista: 'View track', conducir: 'Return to driving',
-    reiniciar: 'Reset · R', diagnostico: 'Models and settings',
-    controles: '<kbd>W</kbd> accelerate · <kbd>S</kbd> brake / reverse · <kbd>A</kbd><kbd>D</kbd> steer',
-    salida: 'In track view: Shift + click on the road to choose the starting position.',
-    cargando: 'Loading models…', listo: 'Ready. Use WASD to drive.',
-    inspeccion: 'Drag to look around; scroll to zoom. Shift + click chooses the starting position.',
-    salidaElegida: 'Starting position saved for this session. R returns here.',
-    borde: 'Terrain edge. Brake and steer away or reverse.',
-    salidaFuera: 'The whole car must fit on the terrain. Choose a point farther from the edge.',
-    salidaInvalida: 'No valid starting position found. Choose one with View track and Shift + click, or check the car size and allowed terrain.',
-    salidaReubicada: 'The initial position was outside the terrain. The car was moved to a valid position; use WASD.',
-    avisos: 'You can drive. Check the wheels under “Models and settings”.',
-    error: 'Some models failed to load. Check paths and the local server under “Models and settings”.',
-    webgl: 'WebGL could not start. Check that your browser has graphics acceleration enabled.',
-    nombres: 'Original car object names', problemas: 'Diagnostics',
-    nombresCircuito: 'Track objects', limite: 'Boundary area', todoCircuito: 'Track surface',
-    posicion: 'Position', rumbo: 'Heading', circuito: 'Track size', ruedas: 'Animatable wheels',
-    ejes: 'Wheelbase', radio: 'Wheel radii',
-    suelo: 'Surface', asfalto: 'Road', cesped: 'Grass',
-  },
+const $ = (id) => document.getElementById(id),
+  ui = crearInterfaz(),
+  audio = crearAudio(),
+  teclas = new Set();
+const parametros = new URLSearchParams(location.search),
+  modoTest = parametros.has('test');
+const permitidos = {
+  modo: ['1', '2'],
+  ambiente: ['costa', 'neon', 'alpino'],
+  calidad: ['baja', 'media', 'alta'],
+  idioma: ['es', 'ca', 'en'],
 };
-
-let idiomaGuardado;
-try { idiomaGuardado = localStorage.getItem('race-circuit-language'); } catch { /* Almacenamiento opcional. */ }
-const idiomaPedido = new URLSearchParams(location.search).get('lang') || idiomaGuardado;
-let idioma = Object.hasOwn(textos, idiomaPedido) ? idiomaPedido : 'es';
-let mensaje = 'cargando';
-let vistaCircuito = false;
-let fallosCarga = false;
-let diagnosticos = [];
-let nombresCoche = [];
-let nombresCircuito = [];
-let tamañoCircuito = null;
-let vehiculo = null;
-let circuito = null;
-let suelo = null;
-let limite = null;
-let detectorTerreno = null;
-let puntosRuedas = [];
-let proporcionCesped = 0;
-let carrera = null;
-let puertasCarrera = [];
-let señalesCarrera = [];
-let recordCarrera = null;
-let nitro = null;
-let zonasNitro = null;
-const claveRecord = `race-circuit-record:${TRAZADO.id}:${TRAZADO.vueltas}`;
-const textosCarrera = {
-  es: { vuelta:'VUELTA', tiempo:'TIEMPO', control:'CONTROL', meta:'META', record:'RÉCORD', espera:'¿Listo para correr?', descripcion:'Completa 3 vueltas. Cruza los controles amarillos en orden y sobre el asfalto. Espacio o el botón para empezar.', empezar:'Empezar carrera', cuenta:'Prepárate', terminada:'¡Carrera completada!', otra:'Volver a correr', nuevo:'¡Nuevo récord personal!', total:'Tiempo total', parcial:'Vuelta', sinSuelo:'No se detecta el asfalto o el césped. Revisa los nombres de las superficies en Modelos y ajustes.', pausa:'PAUSA' },
-  ca: { vuelta:'VOLTA', tiempo:'TEMPS', control:'CONTROL', meta:'META', record:'RÈCORD', espera:'A punt per córrer?', descripcion:'Completa 3 voltes. Travessa els controls grocs en ordre i sobre l’asfalt. Espai o el botó per començar.', empezar:'Començar cursa', cuenta:'Prepara’t', terminada:'Cursa completada!', otra:'Tornar a córrer', nuevo:'Nou rècord personal!', total:'Temps total', parcial:'Volta', sinSuelo:'No es detecta l’asfalt o la gespa. Revisa els noms de les superfícies a Models i ajustos.', pausa:'PAUSA' },
-  en: { vuelta:'LAP', tiempo:'TIME', control:'CHECKPOINT', meta:'FINISH', record:'BEST', espera:'Ready to race?', descripcion:'Complete 3 laps. Cross the yellow checkpoints in order, on the road. Press Space or the button to start.', empezar:'Start race', cuenta:'Get ready', terminada:'Race complete!', otra:'Race again', nuevo:'New personal best!', total:'Total time', parcial:'Lap', sinSuelo:'Road or grass could not be detected. Check the surface names under Models and settings.', pausa:'PAUSED' },
+let opciones = {
+  modo: '1',
+  ambiente: 'costa',
+  calidad: 'media',
+  objetos: true,
+  sonido: false,
+  idioma: 'es',
 };
-
-function pintarCarrera() {
-  const t=textosCarrera[idioma];
-  $('nitro-tiempo').textContent=nitro?.restante>0 ? `${nitro.restante.toFixed(1)} s` : '—';
-  $('etiqueta-vuelta').textContent=t.vuelta;
-  $('etiqueta-tiempo').textContent=t.tiempo;
-  $('etiqueta-control').textContent=t.control;
-  $('etiqueta-record').textContent=t.record;
-  $('record-carrera').textContent=recordCarrera === null ? '—' : formatearTiempo(recordCarrera);
-  $('vueltas').textContent=`${carrera ? Math.min(carrera.vueltasCompletadas+1,carrera.vueltas) : 1}/${TRAZADO.vueltas}`;
-  $('tiempo-carrera').textContent=formatearTiempo(carrera?.tiempo ?? 0);
-  $('control-carrera').textContent=vistaCircuito ? t.pausa : carrera?.control === TRAZADO.controles.length ? t.meta : `${(carrera?.control ?? 0)+1}/${TRAZADO.controles.length}`;
-  $('capa-carrera').hidden=!carrera || vistaCircuito || carrera.fase==='corriendo';
-  if (!carrera) return;
-  const final=carrera.fase==='terminada', cuenta=carrera.fase==='cuenta';
-  $('titulo-carrera').textContent=cuenta ? `${Math.ceil(carrera.cuentaAtras)}` : final ? t.terminada : t.espera;
-  $('detalle-carrera').textContent=cuenta ? t.cuenta : final ? `${t.total}: ${formatearTiempo(carrera.tiempo)}${carrera.nuevoRecord ? '\n'+t.nuevo : ''}` : detectorTerreno ? t.descripcion : t.sinSuelo;
-  $('parciales-carrera').textContent=final ? carrera.tiemposVuelta.map((v,i)=>`${t.parcial} ${i+1}: ${formatearTiempo(v)}`).join('\n') : '';
-  $('empezar-carrera').hidden=cuenta;
-  $('empezar-carrera').disabled=!detectorTerreno;
-  $('empezar-carrera').textContent=final ? t.otra : t.empezar;
-  for (let i=0;i<señalesCarrera.length;i++) {
-    señalesCarrera[i].color.setHex(i === carrera.control ? 0xffe336 : i < carrera.control ? 0x4b995c : 0x2b8494);
-  }
+try {
+  const prev = JSON.parse(localStorage.getItem('race-circuit-ajustes-v2'));
+  if (prev && typeof prev === 'object')
+    for (const k of Object.keys(opciones)) {
+      if (permitidos[k]?.includes(prev[k]) || (!permitidos[k] && typeof prev[k] === 'boolean'))
+        opciones[k] = prev[k];
+    }
+} catch {
+  /* Almacenamiento opcional. */
 }
-
-function prepararCarrera() {
-  const transformar=p=>{
-    const centro=circuito.localToWorld(new THREE.Vector3(p.x,0,p.z));
-    const normal=new THREE.Vector3(p.nx,0,p.nz).transformDirection(circuito.matrixWorld);
-    const largo=Math.hypot(p.nx,p.nz);
-    const borde=circuito.localToWorld(new THREE.Vector3(p.x-p.nz/largo*p.ancho/2,0,p.z+p.nx/largo*p.ancho/2));
-    return {x:centro.x,z:centro.z,nx:normal.x,nz:normal.z,ancho:2*Math.hypot(borde.x-centro.x,borde.z-centro.z)};
-  };
-  puertasCarrera=[...TRAZADO.controles,TRAZADO.meta].map(transformar);
-  const inicio=circuito.localToWorld(new THREE.Vector3(...TRAZADO.salida.posicion));
-  const angulo=TRAZADO.salida.rumboGrados*Math.PI/180;
-  const direccion=new THREE.Vector3(-Math.sin(angulo),0,-Math.cos(angulo)).transformDirection(circuito.matrixWorld);
-  salida={posicion:inicio.toArray(),rumboGrados:Math.atan2(-direccion.x,-direccion.z)*180/Math.PI};
-  try { const guardado=JSON.parse(localStorage.getItem(claveRecord)); if(Number.isFinite(guardado)&&guardado>0)recordCarrera=guardado; } catch { /* Opcional. */ }
-  if (TRAZADO.mostrarControles && detectorTerreno) {
-    puertasCarrera.slice(0,-1).forEach(p=>{
-      const y=detectorTerreno.alturaEn(p.x,p.z);
-      if(y===null)return;
-      const material=new THREE.MeshBasicMaterial({color:0x2b8494});
-      const grupo=new THREE.Group();
-      grupo.position.set(p.x,y+.05,p.z);
-      grupo.rotation.y=Math.atan2(p.nx,p.nz);
-      for(const x of [-p.ancho/2,p.ancho/2]) {
-        const poste=new THREE.Mesh(new THREE.BoxGeometry(.12,2.5,.12),material);poste.position.set(x,1.25,0);grupo.add(poste);
-      }
-      const travesaño=new THREE.Mesh(new THREE.BoxGeometry(p.ancho,.12,.12),material);travesaño.position.y=2.5;grupo.add(travesaño);
-      const flecha=new THREE.ArrowHelper(new THREE.Vector3(0,0,1),new THREE.Vector3(0,.12,-1.5),3,0xffe336,1,.6);grupo.add(flecha);
-      escena.add(grupo);señalesCarrera.push(material);
-    });
-  }
+let idiomaAnterior;
+try {
+  idiomaAnterior = localStorage.getItem('race-circuit-language');
+} catch {}
+opciones.idioma = permitidos.idioma.includes(parametros.get('lang'))
+  ? parametros.get('lang')
+  : permitidos.idioma.includes(idiomaAnterior)
+    ? idiomaAnterior
+    : opciones.idioma;
+for (const k of ['modo', 'ambiente'])
+  if (permitidos[k].includes(parametros.get(k))) opciones[k] = parametros.get(k);
+for (const k of Object.keys(opciones)) {
+  if (typeof opciones[k] === 'boolean') $(k).checked = opciones[k];
+  else $(k).value = opciones[k];
 }
-let salidaInvalida = false;
-let salida = { posicion: [...CONFIG.salida.posicion], rumboGrados: CONFIG.salida.rumboGrados };
-let estado = crearEstado(salida.posicion, salida.rumboGrados);
-const teclas = new Set();
-const gravedadRay = new THREE.Raycaster();
-const clicRay = new THREE.Raycaster();
-const cajaCircuito = new THREE.Box3();
-let camaraInmediata = true;
-
-function mostrarMensaje(clave) {
-  mensaje = clave;
-  $('estado').textContent = textos[idioma][clave];
-}
-
-function pintarDiagnostico() {
-  const t = textos[idioma];
-  const partes = [];
-  if (tamañoCircuito) partes.push(`${t.circuito}: ${tamañoCircuito.toArray().map(v => v.toFixed(2)).join(' × ')} m (X × Y × Z)`);
-  if (vehiculo) {
-    partes.push(`${t.ruedas}: ${vehiculo.ruedas.length}/4`);
-    partes.push(`${t.ejes}: ${vehiculo.distanciaEjes.toFixed(2)} m`);
-    partes.push(`${t.radio}: ${vehiculo.ruedas.map(r => `${r.nombre}=${r.radio.toFixed(3)} m`).join(', ')}`);
-  }
-  if (limite) partes.push(`${t.limite}: ${CONFIG.limites.nombreZona || t.todoCircuito}`);
-  if (diagnosticos.length) partes.push(`\n${t.problemas}:\n${diagnosticos.join('\n')}`);
-  if (nombresCoche.length) partes.push(`\n${t.nombres}:\n${nombresCoche.join('\n')}`);
-  if (nombresCircuito.length) partes.push(`\n${t.nombresCircuito}:\n${nombresCircuito.join('\n')}`);
-  $('lista-modelos').textContent = partes.join('\n');
-}
-
-function cambiarIdioma(nuevo) {
-  idioma = nuevo;
-  const t = textos[idioma];
-  document.documentElement.lang = idioma;
-  $('volver').textContent = t.volver;
-  $('volver').href = `./index.html?lang=${idioma}`;
-  $('etiqueta-prototipo').textContent = t.prototipo;
-  $('controles').innerHTML = t.controles;
-  $('vista').textContent = vistaCircuito ? t.conducir : t.vista;
-  $('reiniciar').textContent = t.reiniciar;
-  $('titulo-diagnostico').textContent = t.diagnostico;
-  $('ayuda-salida').textContent = t.salida;
-  $('idioma').textContent = idioma.toUpperCase();
-  $('idioma').setAttribute('aria-label', { es: 'Cambiar idioma', ca: 'Canviar idioma', en: 'Change language' }[idioma]);
-  $('juego').setAttribute('aria-label', { es: 'Prototipo de conducción', ca: 'Prototip de conducció', en: 'Driving prototype' }[idioma]);
-  mostrarMensaje(mensaje);
-  pintarDiagnostico();
-  pintarCarrera();
-  try { localStorage.setItem('race-circuit-language', idioma); } catch { /* Opcional. */ }
-}
+ui.traducir(opciones.idioma);
+$('imagen-ambiente').src =
+  './assets/' + { costa: 'coast', neon: 'neon', alpino: 'alpine' }[opciones.ambiente] + '.webp';
 
 const escena = new THREE.Scene();
-escena.background = new THREE.Color('#819aa7');
-const camara = new THREE.PerspectiveCamera(65, 1, 0.05, 2000);
-camara.position.set(0, 5, 8);
-camara.lookAt(0, 0, 0);
-let renderer;
-try {
-  renderer = new THREE.WebGLRenderer({ canvas: $('escena'), antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
-} catch (error) {
-  diagnosticos.push(String(error));
-  cambiarIdioma(idioma);
-  mostrarMensaje('webgl');
-  $('diagnostico').open = true;
+escena.background = new THREE.Color('#07111e');
+const inspeccionCamara = new THREE.PerspectiveCamera(65, 1, 0.05, 2500);
+inspeccionCamara.position.set(0, 80, 90);
+let renderer,
+  orbit,
+  circuito,
+  baseCoche,
+  terreno,
+  limite,
+  objetos,
+  nitroVisual,
+  senales,
+  ambiente,
+  minimapa;
+let listo = false,
+  jugadores = [],
+  puertas = [],
+  salidaBase = null,
+  salidaPrueba = null,
+  pantallas = [],
+  ancho = 1,
+  alto = 1,
+  acumulador = 0,
+  ultimoInstante;
+let partida = { fase: 'menu', cuenta: 3, previa: 'corriendo', ganador: null, inspeccion: false };
+let compartidas = [],
+  diagnosticos = [],
+  mensajeHasta = 0,
+  segundoCuenta = 0,
+  recordAnterior = null,
+  nuevoRecord = false;
+
+function mensaje(texto) {
+  $('mensaje').textContent = texto;
+  mensajeHasta = performance.now() + 3600;
+}
+function guardarOpciones() {
+  try {
+    localStorage.setItem('race-circuit-ajustes-v2', JSON.stringify(opciones));
+    localStorage.setItem('race-circuit-language', opciones.idioma);
+  } catch {
+    /* El juego sigue funcionando. */
+  }
+}
+function leerOpciones() {
+  for (const k of Object.keys(opciones))
+    opciones[k] = typeof opciones[k] === 'boolean' ? $(k).checked : $(k).value;
+  guardarOpciones();
+}
+function claveRecord() {
+  return (
+    'race-circuit-record:arcade-v2:solo:' +
+    TRAZADO.id +
+    ':' +
+    TRAZADO.vueltas +
+    ':' +
+    (opciones.objetos ? 'objetos' : 'libre')
+  );
+}
+function leerRecord() {
+  try {
+    return leerMarca(localStorage, claveRecord());
+  } catch {
+    return null;
+  }
+}
+function pintarMarcaMenu() {
+  const e = $('marca-menu');
+  e.hidden = $('modo').value !== '1';
+  const clave =
+    'race-circuit-record:arcade-v2:solo:' +
+    TRAZADO.id +
+    ':' +
+    TRAZADO.vueltas +
+    ':' +
+    ($('objetos').checked ? 'objetos' : 'libre');
+  let n = null;
+  try {
+    n = leerMarca(localStorage, clave);
+  } catch {}
+  e.textContent = ui.t.record + ': ' + (n === null ? ui.t.sinRecord : formatearTiempo(n));
 }
 
-if (renderer) iniciar();
-
-function iniciar() {
-  escena.add(new THREE.HemisphereLight(0xffffff, 0x617f51, 2.4));
-  const sol = new THREE.DirectionalLight(0xfff4dc, 3);
-  sol.position.set(-20, 35, 15);
-  escena.add(sol);
-  const orbit = new OrbitControls(camara, renderer.domElement);
-  orbit.enabled = false;
-  orbit.enableDamping = true;
-  orbit.maxPolarAngle = Math.PI * 0.49;
-
-  function redimensionar() {
-    const ancho = renderer.domElement.clientWidth;
-    const alto = renderer.domElement.clientHeight;
-    renderer.setSize(ancho, alto, false);
-    camara.aspect = ancho / Math.max(alto, 1);
-    camara.updateProjectionMatrix();
-  }
-  window.addEventListener('resize', redimensionar);
-  redimensionar();
-  cambiarIdioma(idioma);
-
-  function cambiarVista(inspeccionar) {
-    vistaCircuito = inspeccionar;
-    orbit.enabled = inspeccionar;
-    teclas.clear();
-    if (vehiculo) estado.velocidad = 0;
-    if (inspeccionar && circuito) {
-      const centro = cajaCircuito.getCenter(new THREE.Vector3());
-      const distancia = Math.max(tamañoCircuito.x, tamañoCircuito.z, 10) * 0.8;
-      orbit.target.copy(centro);
-      camara.position.set(centro.x, cajaCircuito.max.y + distancia, centro.z + distancia * 0.6);
-      orbit.update();
-      mostrarMensaje('inspeccion');
-    } else {
-      camaraInmediata = true;
-      mostrarMensaje(fallosCarga ? 'error' : salidaInvalida ? 'salidaInvalida' : vehiculo?.avisos.length ? 'avisos' : 'listo');
-    }
-    $('vista').textContent = textos[idioma][inspeccionar ? 'conducir' : 'vista'];
-  }
-
-  function colocarCoche() {
-    if (!vehiculo) return;
-    if (puertasCarrera.length) carrera=crearCarrera(puertasCarrera,TRAZADO.vueltas,TRAZADO.cuentaAtras);
-    salidaInvalida = false;
-    let reubicada = false;
-    if (limite) {
-      const segura = limite.salidaSegura(salida.posicion, salida.rumboGrados * Math.PI / 180, vehiculo.huella);
-      if (segura) {
-        reubicada = Math.hypot(segura[0] - salida.posicion[0], segura[2] - salida.posicion[2]) > 0.001;
-        salida.posicion = segura;
-      } else salidaInvalida = true;
-    }
-    estado = crearEstado(salida.posicion, salida.rumboGrados);
-    if(nitro) { reiniciarNitro(nitro,estado);zonasNitro.actualizar(nitro); }
-    vehiculo.actor.position.set(...salida.posicion);
-    vehiculo.actor.rotation.y = estado.rumbo;
-    vehiculo.reiniciarRuedas();
-    ajustarAltura(true);
-    proporcionCesped = detectorTerreno?.porcentajeCesped(estado, puntosRuedas) ?? 0;
-    camaraInmediata = true;
-    teclas.clear();
-    pintarCarrera();
-    if (salidaInvalida) mostrarMensaje('salidaInvalida');
-    else if (reubicada) mostrarMensaje('salidaReubicada');
-    return reubicada;
-  }
-
-  function ajustarAltura(inicial = false) {
-    if (!vehiculo || !suelo || !CONFIG.circuito.seguirAlturaSuelo) return;
-    // La carretera debe ser plana o de pendiente suave para este primer paso.
-    const coche = vehiculo.actor;
-    if (detectorTerreno) {
-      const y=detectorTerreno.alturaEn(coche.position.x,coche.position.z);
-      if(y !== null) { coche.position.y=y+.015; return; }
-    }
-    if (limite) {
-      const y = limite.alturaEn(coche.position.x, coche.position.z);
-      if (y !== null) coche.position.y = y + 0.015;
-      return;
-    }
-    const alturaOrigen = inicial ? Math.max(cajaCircuito.max.y + 2, coche.position.y + 2) : coche.position.y + 1.5;
-    gravedadRay.set(new THREE.Vector3(coche.position.x, alturaOrigen, coche.position.z), new THREE.Vector3(0, -1, 0));
-    gravedadRay.far = inicial ? Math.max(20, alturaOrigen - cajaCircuito.min.y + 5) : 8;
-    const impacto = gravedadRay.intersectObject(suelo, true)[0];
-    if (impacto) coche.position.y = impacto.point.y + 0.015;
-  }
-
-  $('vista').addEventListener('click', () => cambiarVista(!vistaCircuito));
-  $('reiniciar').addEventListener('click', colocarCoche);
-  function empezar() {
-    if (!carrera || !detectorTerreno || vistaCircuito) return;
-    if (carrera.fase==='terminada') colocarCoche();
-    teclas.clear();
-    iniciarCarrera(carrera);
-    pintarCarrera();
-  }
-  $('empezar-carrera').addEventListener('click',empezar);
-  $('idioma').addEventListener('click', () => {
-    const idiomas = ['es', 'ca', 'en'];
-    cambiarIdioma(idiomas[(idiomas.indexOf(idioma) + 1) % idiomas.length]);
-  });
-  const esCampo = elemento => elemento?.matches('input, textarea, select, [contenteditable="true"]');
-  window.addEventListener('keydown', evento => {
-    if (esCampo(evento.target)) return;
-    if (evento.code==='Space' && !evento.repeat) { evento.preventDefault(); empezar(); }
-    if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(evento.code)) {
-      evento.preventDefault();
-      if (!vistaCircuito) teclas.add(evento.code);
-    }
-    if (evento.code === 'KeyR' && !evento.repeat) colocarCoche();
-  });
-  window.addEventListener('keyup', evento => teclas.delete(evento.code));
-  window.addEventListener('blur', () => teclas.clear());
-  document.addEventListener('visibilitychange', () => { teclas.clear(); instanteAnterior=undefined; });
-
-  // Pointerup evita colocar la salida por accidente al arrastrar la vista.
-  let puntoPulsado = null;
-  renderer.domElement.addEventListener('pointerdown', evento => {
-    puntoPulsado = { x: evento.clientX, y: evento.clientY };
-  });
-  renderer.domElement.addEventListener('pointerup', evento => {
-    if (!vistaCircuito || !evento.shiftKey || !suelo || !vehiculo || !puntoPulsado) return;
-    if (Math.hypot(evento.clientX - puntoPulsado.x, evento.clientY - puntoPulsado.y) > 6) return;
-    const rect = renderer.domElement.getBoundingClientRect();
-    const raton = new THREE.Vector2(
-      ((evento.clientX - rect.left) / rect.width) * 2 - 1,
-      -((evento.clientY - rect.top) / rect.height) * 2 + 1,
+function transformarPuerta(p) {
+  const centro = circuito.localToWorld(new THREE.Vector3(p.x, 0, p.z)),
+    n = new THREE.Vector3(p.nx, 0, p.nz).transformDirection(circuito.matrixWorld);
+  const l = Math.hypot(p.nx, p.nz),
+    borde = circuito.localToWorld(
+      new THREE.Vector3(p.x - ((p.nz / l) * p.ancho) / 2, 0, p.z + ((p.nx / l) * p.ancho) / 2),
     );
-    clicRay.setFromCamera(raton, camara);
-    const impacto = clicRay.intersectObject(suelo, true)[0];
-    if (!impacto) return;
-    if (limite && !limite.contiene(impacto.point.x, impacto.point.z,
-      salida.rumboGrados * Math.PI / 180, vehiculo.huella)) {
-      mostrarMensaje('salidaFuera');
+  return {
+    x: centro.x,
+    z: centro.z,
+    nx: n.x,
+    nz: n.z,
+    ancho: 2 * Math.hypot(borde.x - centro.x, borde.z - centro.z),
+  };
+}
+function configurarTrazado() {
+  puertas = [...TRAZADO.controles, TRAZADO.meta].map(transformarPuerta);
+  const p = circuito.localToWorld(new THREE.Vector3(...TRAZADO.salida.posicion)),
+    r = (TRAZADO.salida.rumboGrados * Math.PI) / 180;
+  const d = new THREE.Vector3(-Math.sin(r), 0, -Math.cos(r)).transformDirection(
+    circuito.matrixWorld,
+  );
+  salidaBase = { x: p.x, z: p.z, rumbo: Math.atan2(-d.x, -d.z) };
+}
+function apta(e, huella, asfalto = false) {
+  if (limite && !limite.contiene(e.x, e.z, e.rumbo, huella)) return false;
+  if (terreno.alturaEn(e.x, e.z) === null) return false;
+  if (asfalto && terreno.tipoEn(e.x, e.z) !== 'asfalto') return false;
+  return !opciones.objetos || !objetos.rocas.some((r) => circuloContraCoche(e, huella, r));
+}
+function buscarPosicion(pose, j, desplazamiento = 0) {
+  const c = Math.cos(pose.rumbo),
+    s = Math.sin(pose.rumbo);
+  for (const lado of [desplazamiento, 0, desplazamiento + 1, desplazamiento - 1])
+    for (const avance of [0, -1, 1, -2, 2]) {
+      const e = {
+        x: pose.x + lado * c - avance * s,
+        z: pose.z - lado * s - avance * c,
+        rumbo: pose.rumbo,
+      };
+      if (apta(e, j.vehiculo.huella, true)) return e;
+    }
+  const segura = limite?.salidaSegura([pose.x, 0, pose.z], pose.rumbo, j.vehiculo.huella);
+  if (segura) return { x: segura[0], z: segura[2], rumbo: pose.rumbo };
+  throw new Error('No se encuentra una posición válida de salida.');
+}
+function colocar(j, pose) {
+  j.estado = crearEstado([pose.x, 0, pose.z], (pose.rumbo * 180) / Math.PI);
+  j.camaraInmediata = true;
+  j.vehiculo.reiniciarRuedas();
+  j.distanciaFrame = 0;
+  j.derrape = 0;
+  const y = terreno.alturaEn(pose.x, pose.z);
+  j.vehiculo.actor.position.set(pose.x, (y ?? 0) + 0.015, pose.z);
+  j.vehiculo.actor.rotation.y = pose.rumbo;
+  reiniciarNitro(j.nitro, j.estado);
+}
+function liberarJugadores() {
+  for (const j of jugadores) {
+    escena.remove(j.vehiculo.actor, j.sombra);
+    j.sombra.geometry.dispose();
+    j.sombra.material.dispose();
+    j.vehiculo.actor.traverse((m) => {
+      if (m.isMesh)
+        for (const mat of Array.isArray(m.material) ? m.material : [m.material]) mat.dispose();
+    });
+  }
+  jugadores = [];
+}
+function prepararJugadores() {
+  liberarJugadores();
+  const n = Number(opciones.modo);
+  for (let i = 0; i < n; i++) {
+    const conjunto = clonarConjuntoCoche(baseCoche),
+      color = AJUSTES.colores[i];
+    let carroceria = null,
+      volumen = -1;
+    conjunto.modelo.children[0].traverse((m) => {
+      if (m.isMesh) {
+        const s = new THREE.Box3().setFromObject(m, true).getSize(new THREE.Vector3()),
+          v = s.x * s.y * s.z;
+        if (v > volumen) {
+          volumen = v;
+          carroceria = m;
+        }
+      }
+    });
+    if (carroceria)
+      for (const mat of Array.isArray(carroceria.material)
+        ? carroceria.material
+        : [carroceria.material])
+        if (mat.color && Math.max(mat.color.r, mat.color.g, mat.color.b) > 0.12)
+          mat.color.set(color);
+    const vehiculo = crearVehiculo(conjunto.modelo, CONFIG.coche, conjunto);
+    vehiculo.actor.name = 'Jugador_' + (i + 1);
+    escena.add(vehiculo.actor);
+    const sombra = new THREE.Mesh(
+      new THREE.CircleGeometry(1.4, 24),
+      new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.2,
+        depthWrite: false,
+      }),
+    );
+    sombra.rotation.x = -Math.PI / 2;
+    escena.add(sombra);
+    const j = {
+      id: i + 1,
+      color,
+      vehiculo,
+      sombra,
+      camara: new THREE.PerspectiveCamera(65, 1, 0.05, 2500),
+      objetivoSuave: new THREE.Vector3(),
+      nitro: crearNitro(nitroVisual.zonas),
+      carrera: crearCarrera(puertas, TRAZADO.vueltas, 0),
+      puntos: vehiculo.ruedas.map((r) => ({ x: r.centro.x, z: r.centro.z })),
+      recuperando: 0,
+      fantasma: 0,
+      derrape: 0,
+      cesped: 0,
+      malSentido: false,
+      golpe: 0,
+      distanciaFrame: 0,
+    };
+    if (j.puntos.length !== 4)
+      j.puntos = [-1, 1].flatMap((x) =>
+        [-1, 1].map((z) => ({
+          x: x * vehiculo.huella.semiancho * 0.85,
+          z: z * vehiculo.huella.semilargo * 0.65,
+        })),
+      );
+    const pose = buscarPosicion(
+      i === 0 && salidaPrueba ? salidaPrueba : salidaBase,
+      j,
+      n === 2 ? (i === 0 ? -1.5 : 1.5) : 0,
+    );
+    colocar(j, pose);
+    j.ultimoPunto = { ...pose };
+    jugadores.push(j);
+    diagnosticos.push(...vehiculo.avisos.map((x) => 'J' + j.id + ': ' + x));
+  }
+  redimensionar();
+}
+
+async function iniciarPartida() {
+  if (!listo) return;
+  leerOpciones();
+  partida = {
+    fase: 'cuenta',
+    cuenta: TRAZADO.cuentaAtras,
+    previa: 'corriendo',
+    ganador: null,
+    inspeccion: false,
+  };
+  orbit.enabled = false;
+  acumulador = 0;
+  ultimoInstante = undefined;
+  teclas.clear();
+  segundoCuenta = 0;
+  recordAnterior = leerRecord();
+  nuevoRecord = false;
+  document.querySelector('.resultado-tarjeta').classList.remove('ganador');
+  objetos.grupo.visible = opciones.objetos;
+  objetos.reiniciar();
+  compartidas = nitroVisual.zonas.map((p) => ({ ...p, recarga: 0 }));
+  nitroVisual.actualizar({ zonas: compartidas });
+  ambiente.cambiar(opciones.ambiente);
+  prepararJugadores();
+  renderer.setPixelRatio(
+    Math.min(devicePixelRatio, { baja: 1, media: 1.5, alta: 2 }[opciones.calidad]),
+  );
+  redimensionar();
+  $('escena').focus({ preventScroll: true });
+  if (opciones.sonido && !(await audio.activar(true))) mensaje(ui.t.noSonido);
+  else if (!opciones.sonido) audio.activar(false);
+  if (partida.cuenta <= 0) salida();
+  pintarPantallas();
+}
+function salida() {
+  partida.fase = 'corriendo';
+  jugadores.forEach((j) => iniciarCarrera(j.carrera));
+  audio.efecto('salida');
+  mensaje(ui.t.juega);
+  pintarPantallas();
+}
+function pausar() {
+  if (!['corriendo', 'cuenta'].includes(partida.fase)) return;
+  partida.previa = partida.fase;
+  partida.fase = 'pausa';
+  teclas.clear();
+  audio.actualizar([], false);
+  pintarPantallas();
+}
+function continuar() {
+  if (partida.fase !== 'pausa') return;
+  partida.fase = partida.previa;
+  partida.inspeccion = false;
+  orbit.enabled = false;
+  jugadores.forEach((j) => (j.camaraInmediata = true));
+  ultimoInstante = undefined;
+  teclas.clear();
+  $('escena').focus({ preventScroll: true });
+  pintarPantallas();
+}
+function alternarPausa() {
+  if (partida.fase === 'pausa') continuar();
+  else pausar();
+}
+function volverMenu() {
+  partida.fase = 'menu';
+  partida.inspeccion = false;
+  if (orbit) orbit.enabled = false;
+  teclas.clear();
+  audio.actualizar([], false);
+  pintarPantallas();
+}
+function verCircuito() {
+  if (partida.fase !== 'pausa') return;
+  partida.inspeccion = true;
+  orbit.enabled = true;
+  const caja = terreno.caja,
+    centro = caja.getCenter(new THREE.Vector3()),
+    distancia = Math.max(caja.max.x - caja.min.x, caja.max.z - caja.min.z) * 0.8;
+  orbit.target.copy(centro);
+  inspeccionCamara.position.set(centro.x, caja.max.y + distancia, centro.z + distancia * 0.6);
+  orbit.update();
+  mensaje(ui.t.ajustarInicio);
+  redimensionar();
+  pintarPantallas();
+}
+function recuperar(id) {
+  if (partida.fase !== 'corriendo') return;
+  const j = jugadores.find((p) => p.id === id);
+  if (!j || j.recuperando > 0) return;
+  const pose = buscarPosicion(j.ultimoPunto, j, jugadores.length === 2 ? (id === 1 ? -1 : 1) : 0);
+  colocar(j, pose);
+  j.recuperando = AJUSTES.recuperacionSegundos;
+  j.fantasma = AJUSTES.inmunidadRecuperacion;
+  audio.efecto('recuperar');
+}
+
+function entradaJugador(j) {
+  const flechas = { ArrowUp: 'KeyW', ArrowDown: 'KeyS', ArrowLeft: 'KeyA', ArrowRight: 'KeyD' };
+  const e = new Set(),
+    mapa =
+      j.id === 1
+        ? {
+            KeyW: 'KeyW',
+            KeyS: 'KeyS',
+            KeyA: 'KeyA',
+            KeyD: 'KeyD',
+            ...(jugadores.length === 1 ? flechas : {}),
+          }
+        : flechas;
+  for (const [fisica, logica] of Object.entries(mapa)) if (teclas.has(fisica)) e.add(logica);
+  if (j.derrape > 0) return new Set();
+  if (e.has('KeyS')) e.delete('KeyW');
+  else if (j.nitro.restante > 0 && j.estado.velocidad >= 0) e.add('KeyW');
+  return e;
+}
+function guardarControl(j, puerta) {
+  const largo = Math.hypot(puerta.nx, puerta.nz);
+  const nx = puerta.nx / largo,
+    nz = puerta.nz / largo;
+  const pose = { x: puerta.x + nx * 2, z: puerta.z + nz * 2, rumbo: Math.atan2(-nx, -nz) };
+  j.ultimoPunto = buscarPosicion(pose, j);
+  audio.efecto('control');
+}
+function paso(dt) {
+  if (partida.fase !== 'corriendo') return;
+  compartidas.forEach((z) => (z.recarga = Math.max(0, z.recarga - dt)));
+  objetos.actualizar(dt);
+  for (const j of jugadores) {
+    j.anterior = { x: j.estado.x, z: j.estado.z, rumbo: j.estado.rumbo };
+    j.avance = 0;
+    j.golpe = Math.max(0, j.golpe - dt);
+    j.fantasma = Math.max(0, j.fantasma - dt);
+    j.recuperando = Math.max(0, j.recuperando - dt);
+    j.derrape = Math.max(0, j.derrape - dt);
+    j.cesped = terreno.porcentajeCesped(j.estado, j.puntos);
+    if (j.recuperando > 0) {
+      j.estado.velocidad = 0;
+      actualizarNitro(j.nitro, j.estado, { ...j.estado, avance: 0 }, dt, () => false, compartidas);
+      continue;
+    }
+    const mejorada = ajustarConduccion(CONFIG.conduccion, j.estado.velocidad, j.nitro),
+      ajustes = conduccionEnTerreno(mejorada, CONFIG.cesped, j.cesped);
+    let roca = false;
+    const movimiento = avanzarConLimite(
+      j.estado,
+      entradaJugador(j),
+      dt,
+      ajustes,
+      j.vehiculo.distanciaEjes,
+      (e) => {
+        if (CONFIG.limites.activo && !limite.contiene(e.x, e.z, e.rumbo, j.vehiculo.huella))
+          return false;
+        if (
+          opciones.objetos &&
+          objetos.rocas.some((r) => circuloContraCoche(e, j.vehiculo.huella, r))
+        ) {
+          roca = true;
+          return false;
+        }
+        return true;
+      },
+      CONFIG.limites.pasoMaximo,
+    );
+    j.avance = movimiento.distancia;
+    j.distanciaFrame += j.avance;
+    if (roca && j.golpe === 0) {
+      j.golpe = 0.7;
+      audio.efecto('golpe');
+    }
+    if (
+      actualizarNitro(
+        j.nitro,
+        j.anterior,
+        { ...j.estado, avance: j.avance },
+        dt,
+        (x, z) => terreno.tipoEn(x, z) === 'asfalto',
+        compartidas,
+      )
+    )
+      audio.efecto('nitro');
+    if (opciones.objetos && j.fantasma === 0 && j.derrape === 0) {
+      const b = objetos.platanos.find(
+        (p) => p.recarga === 0 && circuloContraCoche(j.estado, j.vehiculo.huella, p),
+      );
+      if (b) {
+        b.recarga = AJUSTES.recargaPlatano;
+        b.modelo.visible = false;
+        j.derrape = AJUSTES.duracionPlatano;
+        j.estado.velocidad *= 0.45;
+        j.nitro.restante = 0;
+        audio.efecto('platano');
+      }
+    }
+  }
+  if (jugadores.length === 2) {
+    const [a, b] = jugadores;
+    if (a.fantasma === 0 && b.fantasma === 0) {
+      const v = separacionCoches(a.estado, a.vehiculo.huella, b.estado, b.vehiculo.huella);
+      if (v) {
+        const pa = { ...a.estado, x: a.estado.x - v.x, z: a.estado.z - v.z },
+          pb = { ...b.estado, x: b.estado.x + v.x, z: b.estado.z + v.z };
+        if (apta(pa, a.vehiculo.huella)) Object.assign(a.estado, pa);
+        else Object.assign(a.estado, a.anterior);
+        if (apta(pb, b.vehiculo.huella)) Object.assign(b.estado, pb);
+        else Object.assign(b.estado, b.anterior);
+        a.estado.velocidad *= 0.6;
+        b.estado.velocidad *= 0.6;
+        if (a.golpe === 0 && b.golpe === 0) audio.efecto('golpe');
+        a.golpe = b.golpe = 0.6;
+      }
+    }
+  }
+  for (const j of jugadores) {
+    const control = j.carrera.control,
+      vueltas = j.carrera.vueltasCompletadas;
+    actualizarCarrera(
+      j.carrera,
+      j.anterior,
+      { ...j.estado, avance: j.avance },
+      dt,
+      (x, z) => terreno.tipoEn(x, z) === 'asfalto',
+    );
+    if (j.carrera.control !== control || j.carrera.vueltasCompletadas !== vueltas)
+      guardarControl(j, puertas[(j.carrera.control + puertas.length - 1) % puertas.length]);
+    const siguiente = puertas[j.carrera.control],
+      dot = -Math.sin(j.estado.rumbo) * siguiente.nx - Math.cos(j.estado.rumbo) * siguiente.nz;
+    j.malSentido = j.estado.velocidad > 2 && dot < -0.55;
+  }
+  const ganador = resolverGanador(jugadores);
+  if (ganador !== null) {
+    partida.ganador = ganador;
+    partida.fase = 'resultado';
+    jugadores.forEach((j) => {
+      j.estado.velocidad = 0;
+      j.nitro.restante = 0;
+    });
+    if (jugadores.length === 1 && !salidaPrueba && !modoTest) {
+      try {
+        nuevoRecord = guardarMarca(
+          localStorage,
+          claveRecord(),
+          jugadores[0].carrera.tiempo,
+        ).mejorado;
+      } catch {}
+    }
+    audio.efecto('victoria');
+    mostrarResultados();
+    pintarPantallas();
+  }
+}
+
+function actualizarVisuales(dt) {
+  for (const j of jugadores) {
+    const y = terreno.alturaEn(j.estado.x, j.estado.z) ?? j.vehiculo.actor.position.y - 0.015;
+    j.vehiculo.actor.position.set(j.estado.x, y + 0.015, j.estado.z);
+    const giro = j.derrape > 0 ? (1 - j.derrape / AJUSTES.duracionPlatano) * Math.PI * 2 : 0;
+    j.vehiculo.actor.rotation.y = j.estado.rumbo + giro;
+    j.vehiculo.actor.visible = j.fantasma === 0 || Math.floor(performance.now() / 120) % 2 === 0;
+    j.vehiculo.actualizarRuedas(j.distanciaFrame, j.estado.direccion);
+    j.distanciaFrame = 0;
+    j.sombra.position.set(j.estado.x, y + 0.025, j.estado.z);
+    j.sombra.scale.set(1, 1.6, 1);
+    j.sombra.rotation.z = -j.estado.rumbo;
+    const extra = j.nitro.restante > 0 ? 1.12 : 1;
+    const destino = new THREE.Vector3(
+      j.estado.x + Math.sin(j.estado.rumbo) * CONFIG.camara.distancia * extra,
+      y + CONFIG.camara.altura,
+      j.estado.z + Math.cos(j.estado.rumbo) * CONFIG.camara.distancia * extra,
+    );
+    const objetivo = new THREE.Vector3(
+      j.estado.x - Math.sin(j.estado.rumbo) * CONFIG.camara.mirarDelante,
+      y + 0.8,
+      j.estado.z - Math.cos(j.estado.rumbo) * CONFIG.camara.mirarDelante,
+    );
+    const t = j.camaraInmediata ? 1 : 1 - Math.exp(-CONFIG.camara.suavidad * dt);
+    j.camara.position.lerp(destino, t);
+    j.objetivoSuave.lerp(objetivo, t);
+    j.camara.lookAt(j.objetivoSuave);
+    j.camaraInmediata = false;
+    j.camara.fov += ((j.nitro.restante > 0 ? 72 : 65) - j.camara.fov) * (1 - Math.exp(-4 * dt));
+  }
+  nitroVisual?.actualizar({ zonas: compartidas });
+  senales?.actualizar(jugadores);
+  minimapa?.pintar(jugadores);
+  ui.pintar(jugadores);
+  audio.actualizar(jugadores, partida.fase === 'corriendo');
+}
+function cuadro(delta) {
+  if (!listo) return;
+  if (partida.fase === 'cuenta') {
+    const anterior = partida.cuenta;
+    partida.cuenta = Math.max(0, partida.cuenta - delta);
+    const segundo = Math.ceil(partida.cuenta);
+    if (segundo !== segundoCuenta && segundo > 0) {
+      segundoCuenta = segundo;
+      audio.efecto('cuenta');
+    }
+    $('cuenta-texto').textContent = String(Math.max(1, segundo));
+    if (partida.cuenta === 0) {
+      salida();
+      delta = Math.max(0, delta - anterior);
+    }
+  }
+  if (partida.fase === 'corriendo') {
+    if (delta > 0.25) jugadores.forEach((j) => (j.carrera.tiempo += delta - 0.25));
+    acumulador += Math.min(delta, 0.25);
+    while (acumulador >= AJUSTES.pasoFisica && partida.fase === 'corriendo') {
+      paso(AJUSTES.pasoFisica);
+      acumulador -= AJUSTES.pasoFisica;
+    }
+  }
+  actualizarVisuales(Math.min(delta, 0.1));
+  if (performance.now() > mensajeHasta) $('mensaje').textContent = '';
+}
+
+function redimensionar() {
+  ancho = Math.max(1, $('escena').clientWidth);
+  alto = Math.max(1, $('escena').clientHeight);
+  if (renderer) renderer.setSize(ancho, alto, false);
+  pantallas = dividirPantallas(ancho, alto, jugadores.length || 1);
+  ui.crearHuds(jugadores, pantallas);
+  document.body.classList.toggle('dos-jugadores', jugadores.length === 2);
+  const separador = $('separador');
+  separador.style.cssText =
+    ancho >= 850 ? 'left:50%;top:0;width:2px;height:100%' : 'left:0;top:50%;width:100%;height:2px';
+  inspeccionCamara.aspect = ancho / alto;
+  inspeccionCamara.updateProjectionMatrix();
+  ui.pintar(jugadores);
+}
+function dibujar() {
+  if (!renderer) return;
+  renderer.setScissorTest(true);
+  if (!jugadores.length || partida.inspeccion) {
+    renderer.setViewport(0, 0, ancho, alto);
+    renderer.setScissor(0, 0, ancho, alto);
+    if (partida.inspeccion) orbit.update();
+    renderer.render(escena, inspeccionCamara);
+  } else
+    jugadores.forEach((j, i) => {
+      const p = pantallas[i];
+      j.camara.aspect = p.w / p.h;
+      j.camara.updateProjectionMatrix();
+      renderer.setViewport(p.x, p.y, p.w, p.h);
+      renderer.setScissor(p.x, p.y, p.w, p.h);
+      renderer.render(escena, j.camara);
+    });
+  renderer.setScissorTest(false);
+}
+function pintarPantallas() {
+  const menu = partida.fase === 'menu',
+    pausa = partida.fase === 'pausa',
+    resultado = partida.fase === 'resultado';
+  $('pantalla-menu').hidden = !menu;
+  $('pantalla-pausa').hidden = !pausa || partida.inspeccion;
+  $('pantalla-resultados').hidden = !resultado;
+  $('cuenta').hidden = partida.fase !== 'cuenta';
+  $('huds').hidden = menu || resultado || partida.inspeccion;
+  $('mapa-panel').hidden = menu || resultado || partida.inspeccion;
+  $('separador').hidden = menu || resultado || partida.inspeccion || jugadores.length !== 2;
+  $('ayuda-teclas').hidden = menu || resultado || partida.inspeccion;
+  $('pausa').textContent = pausa ? ui.t.continuar : ui.t.pausa;
+  $('audio').setAttribute('aria-pressed', String(opciones.sonido));
+  $('estado-global').textContent = menu
+    ? 'ARCADE / PROTOTIPO'
+    : pausa
+      ? ui.t.enPausa
+      : jugadores.length === 2
+        ? 'J1 × J2'
+        : 'TIME TRIAL';
+  pintarMarcaMenu();
+}
+function mostrarResultados() {
+  const t = ui.t,
+    multi = jugadores.length === 2;
+  $('titulo-resultado').textContent = multi
+    ? partida.ganador === 'empate'
+      ? t.empate
+      : 'WIN J' + partida.ganador
+    : t.completada;
+  $('subtitulo-resultado').textContent = multi
+    ? partida.ganador === 'empate'
+      ? ''
+      : t.gana + ' J' + partida.ganador
+    : salidaPrueba || modoTest
+      ? t.entrenamiento
+      : nuevoRecord
+        ? t.nuevoRecord
+        : recordAnterior === null
+          ? t.sinRecord
+          : t.record + ': ' + formatearTiempo(recordAnterior);
+  $('mensaje').textContent = '';
+  const contenedor = $('resultados');
+  contenedor.innerHTML = '';
+  for (const j of jugadores) {
+    const fila = document.createElement('div');
+    fila.className = 'fila-resultado';
+    const titulo = document.createElement('h3');
+    titulo.style.color = j.color;
+    titulo.textContent = 'J' + j.id;
+    fila.append(titulo);
+    const total = document.createElement('strong');
+    total.textContent =
+      j.carrera.fase === 'terminada'
+        ? formatearTiempo(j.carrera.tiempo)
+        : j.carrera.vueltasCompletadas + '/' + j.carrera.vueltas + ' · ' + t.pendiente;
+    fila.append(total);
+    j.carrera.tiemposVuelta.forEach((v, i) => {
+      const p = document.createElement('p');
+      p.textContent = t.vuelta + ' ' + (i + 1) + ' · ' + formatearTiempo(v);
+      fila.append(p);
+    });
+    contenedor.append(fila);
+  }
+  document.querySelector('.resultado-tarjeta').classList.add('ganador');
+}
+
+function enlazar() {
+  $('empezar').addEventListener('click', () => iniciarPartida());
+  $('revancha').addEventListener('click', () => iniciarPartida());
+  $('reiniciar').addEventListener('click', () => iniciarPartida());
+  $('pausa').addEventListener('click', alternarPausa);
+  $('continuar').addEventListener('click', continuar);
+  $('vista').addEventListener('click', verCircuito);
+  for (const id of ['menu', 'salir-pausa', 'salir-resultados'])
+    $(id).addEventListener('click', volverMenu);
+  $('huds').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-jugador]');
+    if (b) recuperar(Number(b.dataset.jugador));
+  });
+  $('audio').addEventListener('click', async () => {
+    opciones.sonido = !opciones.sonido;
+    $('sonido').checked = opciones.sonido;
+    guardarOpciones();
+    if (!(await audio.activar(opciones.sonido))) mensaje(ui.t.noSonido);
+    pintarPantallas();
+  });
+  $('idioma').addEventListener('change', () => {
+    opciones.idioma = $('idioma').value;
+    ui.traducir(opciones.idioma);
+    guardarOpciones();
+    if (listo) $('empezar').textContent = ui.t.empezar;
+    if (partida.fase === 'resultado') mostrarResultados();
+    pintarPantallas();
+  });
+  $('ambiente').addEventListener('change', () => {
+    $('imagen-ambiente').src =
+      './assets/' +
+      { costa: 'coast', neon: 'neon', alpino: 'alpine' }[$('ambiente').value] +
+      '.webp';
+  });
+  for (const id of ['modo', 'objetos']) $(id).addEventListener('change', pintarMarcaMenu);
+  window.addEventListener('keydown', (e) => {
+    if (e.target.matches('input,textarea,select,[contenteditable=true]')) return;
+    if (
+      [
+        'KeyW',
+        'KeyA',
+        'KeyS',
+        'KeyD',
+        'ArrowUp',
+        'ArrowDown',
+        'ArrowLeft',
+        'ArrowRight',
+        'Space',
+        'Enter',
+      ].includes(e.code)
+    )
+      e.preventDefault();
+    teclas.add(e.code);
+    if (e.repeat) return;
+    if (e.code === 'KeyP' || e.code === 'Escape') alternarPausa();
+    if (e.code === 'Space') {
+      if (partida.fase === 'menu' || partida.fase === 'resultado') iniciarPartida();
+      else if (partida.fase === 'pausa') continuar();
+    }
+    if (e.code === 'KeyR' && listo && partida.fase !== 'menu') iniciarPartida();
+    if (e.code === 'KeyF') recuperar(1);
+    if (e.code === 'Enter') recuperar(2);
+  });
+  window.addEventListener('keyup', (e) => teclas.delete(e.code));
+  window.addEventListener('blur', () => {
+    teclas.clear();
+    pausar();
+  });
+  document.addEventListener('visibilitychange', () => {
+    teclas.clear();
+    ultimoInstante = undefined;
+    if (document.hidden) pausar();
+  });
+  window.addEventListener('resize', redimensionar);
+  let pulsacion = null;
+  $('escena').addEventListener('pointerdown', (e) => {
+    pulsacion = { x: e.clientX, y: e.clientY };
+  });
+  $('escena').addEventListener('pointerup', (e) => {
+    if (
+      !partida.inspeccion ||
+      !e.shiftKey ||
+      !pulsacion ||
+      Math.hypot(e.clientX - pulsacion.x, e.clientY - pulsacion.y) > 6
+    )
       return;
-    }
-    salida.posicion = impacto.point.toArray();
-    colocarCoche();
-    mostrarMensaje('salidaElegida');
-  });
-
-  cargarModelos().then(() => {
-    const reubicada = colocarCoche();
-    $('vista').disabled = !circuito || !vehiculo;
-    $('reiniciar').disabled = !vehiculo;
-    if (fallosCarga || vehiculo?.avisos.length) $('diagnostico').open = true;
-    mostrarMensaje(fallosCarga ? 'error' : salidaInvalida ? 'salidaInvalida' : vehiculo?.avisos.length ? 'avisos' : reubicada ? 'salidaReubicada' : 'listo');
-  });
-
-  const posicionCamara = new THREE.Vector3();
-  const objetivoCamara = new THREE.Vector3();
-  const objetivoSuave = new THREE.Vector3();
-  let instanteAnterior;
-  renderer.setAnimationLoop(instante => {
-    const tiempoReal = instanteAnterior === undefined || document.hidden ? 0 : Math.max(0,(instante-instanteAnterior)/1000);
-    const dt = instanteAnterior === undefined ? 0 : Math.min((instante - instanteAnterior) / 1000, 0.05);
-    instanteAnterior = instante;
-    if (vehiculo) {
-      if (!vistaCircuito) {
-        const anterior={x:estado.x,z:estado.z};
-        const enCarrera=carrera?.fase==='corriendo' && !document.hidden;
-        let distancia = 0;
-        if (enCarrera && (!CONFIG.limites.activo || (limite && !salidaInvalida))) {
-          proporcionCesped = detectorTerreno?.porcentajeCesped(estado, puntosRuedas) ?? 0;
-          const mejorada=ajustarConduccion(CONFIG.conduccion,estado.velocidad,nitro);
-          const conduccion = conduccionEnTerreno(mejorada, CONFIG.cesped, proporcionCesped);
-          // El turbo impulsa también sin mantener W. S conserva prioridad de freno.
-          let entrada=teclas;
-          if(nitro?.restante>0) {
-            entrada=new Set(teclas);
-            if(entrada.has('KeyS'))entrada.delete('KeyW');
-            else if(estado.velocidad>=0)entrada.add('KeyW');
-          }
-          const movimiento = avanzarConLimite(estado, entrada, dt, conduccion, vehiculo.distanciaEjes,
-            candidato => !CONFIG.limites.activo || limite.contiene(candidato.x, candidato.z, candidato.rumbo, vehiculo.huella),
-            CONFIG.limites.pasoMaximo);
-          distancia = movimiento.distancia;
-          if (movimiento.bloqueado && mensaje !== 'borde') mostrarMensaje('borde');
-          else if (!movimiento.bloqueado && distancia !== 0 && mensaje === 'borde') {
-            mostrarMensaje(vehiculo.avisos.length ? 'avisos' : 'listo');
-          }
-        } else estado.velocidad = 0;
-        vehiculo.actor.position.x = estado.x;
-        vehiculo.actor.position.z = estado.z;
-        vehiculo.actor.rotation.y = estado.rumbo;
-        ajustarAltura();
-        vehiculo.actualizarRuedas(distancia, estado.direccion);
-        if(enCarrera && nitro) {
-          actualizarNitro(nitro,anterior,{...estado,avance:distancia},tiempoReal,(x,z)=>detectorTerreno?.tipoEn(x,z)==='asfalto');
-          zonasNitro.actualizar(nitro);
-        }
-        if (carrera && actualizarCarrera(carrera,anterior,{...estado,avance:distancia},tiempoReal,(x,z)=>detectorTerreno?.tipoEn(x,z)==='asfalto')) {
-          estado.velocidad=0;
-          if(nitro)nitro.restante=0;
-          if(recordCarrera===null || carrera.tiempo<recordCarrera) {
-            recordCarrera=carrera.tiempo; carrera.nuevoRecord=true;
-            try { localStorage.setItem(claveRecord,JSON.stringify(recordCarrera)); } catch { /* Opcional. */ }
-          }
-        }
-        posicionCamara.set(
-          estado.x + Math.sin(estado.rumbo) * CONFIG.camara.distancia,
-          vehiculo.actor.position.y + CONFIG.camara.altura,
-          estado.z + Math.cos(estado.rumbo) * CONFIG.camara.distancia,
-        );
-        objetivoCamara.set(
-          estado.x - Math.sin(estado.rumbo) * CONFIG.camara.mirarDelante,
-          vehiculo.actor.position.y + 0.8,
-          estado.z - Math.cos(estado.rumbo) * CONFIG.camara.mirarDelante,
-        );
-        const suavidad = camaraInmediata ? 1 : 1 - Math.exp(-CONFIG.camara.suavidad * dt);
-        camara.position.lerp(posicionCamara, suavidad);
-        objetivoSuave.lerp(objetivoCamara, suavidad);
-        camara.lookAt(objetivoSuave);
-        camaraInmediata = false;
-      }
-      $('velocidad').textContent = Math.round(Math.abs(estado.velocidad) * 3.6);
-      const t = textos[idioma];
-      const grados = ((estado.rumbo * 180 / Math.PI) % 360 + 360) % 360;
-      const superficie = proporcionCesped > 0 ? `${t.cesped} (${Math.round(proporcionCesped * 100)} %)` : t.asfalto;
-      $('coordenadas').textContent = `${t.posicion}: [${vehiculo.actor.position.toArray().map(v => v.toFixed(2)).join(', ')}] · ${t.rumbo}: ${grados.toFixed(1)}°${detectorTerreno ? ` · ${t.suelo}: ${superficie}` : ''}`;
-    }
-    if (vistaCircuito) orbit.update();
-    pintarCarrera();
-    renderer.render(escena, camara);
+    const rect = $('escena').getBoundingClientRect(),
+      r = new THREE.Raycaster();
+    r.setFromCamera(
+      new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        (-(e.clientY - rect.top) / rect.height) * 2 + 1,
+      ),
+      inspeccionCamara,
+    );
+    const p = r.intersectObject(circuito, true)[0]?.point;
+    if (!p || terreno.tipoEn(p.x, p.z) !== 'asfalto') return;
+    salidaPrueba = { x: p.x, z: p.z, rumbo: salidaBase.rumbo };
+    iniciarPartida();
+    mensaje(ui.t.entrenamiento);
   });
 }
 
-async function cargarModelos() {
-  const loader = new GLTFLoader();
-  const resultados = await Promise.allSettled([
-    loader.loadAsync(CONFIG.modelos.circuito),
-    cargarConjuntoCoche(loader, CONFIG.modelos, CONFIG.coche),
-  ]);
-  const resultadoCircuito = resultados[0];
-  const resultadoCoche = resultados[1];
-  if (resultadoCircuito.status === 'fulfilled') {
-    try {
-      circuito = resultadoCircuito.value.scene;
-      circuito.traverse(objeto => {
-        if (!objeto.name) return;
-        const materiales = (Array.isArray(objeto.material) ? objeto.material : [objeto.material])
-          .filter(Boolean).map(material => material.name).filter(Boolean);
-        nombresCircuito.push(`${objeto.name} (${objeto.type})${materiales.length ? ' · ' + materiales.join(', ') : ''}`);
-      });
-      circuito.scale.multiplyScalar(CONFIG.circuito.escala);
-      circuito.rotation.y += CONFIG.circuito.giroGrados * Math.PI / 180;
-      circuito.position.add(new THREE.Vector3(...CONFIG.circuito.posicion));
-      escena.add(circuito);
-      circuito.updateWorldMatrix(true, true);
-      cajaCircuito.setFromObject(circuito, true);
-      if (cajaCircuito.isEmpty()) throw new Error('El circuito no contiene geometría visible.');
-      tamañoCircuito = cajaCircuito.getSize(new THREE.Vector3());
-      suelo = CONFIG.circuito.nombreSuelo ? circuito.getObjectByName(CONFIG.circuito.nombreSuelo) : circuito;
-      if (!suelo) {
-        diagnosticos.push(`No se encuentra el suelo '${CONFIG.circuito.nombreSuelo}'. Se usará todo el circuito.`);
-        suelo = circuito;
-      }
-      camara.far = Math.max(2000, tamañoCircuito.length() * 4);
-      camara.updateProjectionMatrix();
-    } catch (error) {
-      fallosCarga = true;
-      diagnosticos.push(`Circuito: ${error.message}`);
-      if (circuito) escena.remove(circuito);
-      circuito = suelo = null;
-    }
-  } else {
-    fallosCarga = true;
-    diagnosticos.push(`Circuito: ${CONFIG.modelos.circuito}\n${resultadoCircuito.reason}`);
+async function inicializar() {
+  try {
+    renderer = new THREE.WebGLRenderer({
+      canvas: $('escena'),
+      antialias: true,
+      powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    orbit = new OrbitControls(inspeccionCamara, $('escena'));
+    orbit.enabled = false;
+    orbit.enableDamping = true;
+    orbit.maxPolarAngle = Math.PI * 0.49;
+    $('escena').tabIndex = 0;
+    enlazar();
+    redimensionar();
+    renderer.setAnimationLoop((instante) => {
+      if (document.hidden) return;
+      const dt = ultimoInstante === undefined ? 0 : Math.max(0, (instante - ultimoInstante) / 1000);
+      ultimoInstante = instante;
+      cuadro(dt);
+      dibujar();
+    });
+    const gestor = new THREE.LoadingManager();
+    gestor.onProgress = (url, cargados, total) => {
+      $('estado-carga').textContent = ui.t.cargando + ' ' + cargados + '/' + total;
+    };
+    const loader = new GLTFLoader(gestor),
+      resultados = await Promise.all([
+        loader.loadAsync(CONFIG.modelos.circuito),
+        cargarConjuntoCoche(loader, CONFIG.modelos, CONFIG.coche),
+      ]);
+    circuito = resultados[0].scene;
+    baseCoche = resultados[1];
+    circuito.scale.multiplyScalar(CONFIG.circuito.escala);
+    circuito.rotation.y += (CONFIG.circuito.giroGrados * Math.PI) / 180;
+    circuito.position.add(new THREE.Vector3(...CONFIG.circuito.posicion));
+    escena.add(circuito);
+    circuito.updateWorldMatrix(true, true);
+    terreno = crearDetectorTerreno(circuito, CONFIG.cesped);
+    if (!terreno.disponible) throw new Error(terreno.avisos.join('\n'));
+    limite = crearLimite(circuito, CONFIG.limites, terreno);
+    configurarTrazado();
+    ambiente = crearAmbiente(escena, circuito);
+    nitroVisual = await crearZonasNitro(loader, circuito, terreno, escena, MEJORAS);
+    objetos = await crearObjetos(loader, circuito, terreno, escena, AJUSTES);
+    diagnosticos.push(...nitroVisual.avisos, ...objetos.avisos);
+    compartidas = nitroVisual.zonas.map((p) => ({ ...p, recarga: 0 }));
+    senales = crearSenales(puertas, terreno, escena);
+    senales.grupo.visible = TRAZADO.mostrarControles;
+    minimapa = crearMinimapa($('minimapa'), circuito, puertas, CONFIG.cesped.nombresAsfalto);
+    prepararJugadores();
+    actualizarVisuales(0);
+    listo = true;
+    $('empezar').disabled = false;
+    $('empezar').textContent = ui.t.empezar;
+    $('estado-carga').textContent = ui.t.listo;
+    $('lista-modelos').textContent =
+      'Coche: ' +
+      CONFIG.modelos.chasis +
+      '\nCircuito: ' +
+      CONFIG.modelos.circuito +
+      '\nNitro: ' +
+      MEJORAS.modelo +
+      '\n' +
+      (diagnosticos.length
+        ? diagnosticos.join('\n')
+        : 'OK · GLB / 4 ruedas por jugador / terreno / controles');
+    if (diagnosticos.length) $('diagnostico').open = true;
+    ambiente.cambiar(opciones.ambiente);
+    pintarPantallas();
+  } catch (error) {
+    console.error(error);
+    $('estado-carga').textContent = ui.t.error;
+    $('lista-modelos').textContent = String(error.stack || error);
+    $('diagnostico').open = true;
+    $('empezar').disabled = true;
   }
-
-  if (resultadoCoche.status === 'fulfilled') {
-    try {
-      resultadoCoche.value.modelo.traverse(objeto => {
-        if (objeto.name) nombresCoche.push(`${objeto.name} (${objeto.type})`);
-      });
-      vehiculo = crearVehiculo(resultadoCoche.value.modelo, CONFIG.coche, resultadoCoche.value);
-      escena.add(vehiculo.actor);
-      diagnosticos.push(...vehiculo.avisos);
-    } catch (error) {
-      fallosCarga = true;
-      diagnosticos.push(`Coche: ${error.message}`);
-    }
-  } else {
-    fallosCarga = true;
-    diagnosticos.push(`Coche: ${resultadoCoche.reason}`);
-  }
-  if (CONFIG.limites.activo && circuito && vehiculo) {
-    try { limite = crearLimite(circuito, CONFIG.limites); }
-    catch (error) {
-      fallosCarga = true;
-      diagnosticos.push(`Límite: ${error.message}`);
-    }
-  }
-  if (circuito && vehiculo) {
-    try {
-      const detector = crearDetectorTerreno(circuito, CONFIG.cesped);
-      diagnosticos.push(...detector.avisos);
-      if (detector.disponible) detectorTerreno = detector;
-      else $('diagnostico').open = true;
-      // Usa los centros reales de las 4 ruedas, ya corregidos al montar el GLB.
-      puntosRuedas = vehiculo.ruedas.length === 4
-        ? vehiculo.ruedas.map(rueda => ({ x: rueda.centro.x, z: rueda.centro.z }))
-        : [-1, 1].flatMap(lado => [-1, 1].map(eje => ({
-            x: lado * vehiculo.huella.semiancho * 0.85,
-            z: eje * vehiculo.huella.semilargo * 0.65,
-          })));
-    } catch (error) {
-      diagnosticos.push(`Césped: ${error.message}`);
-    }
-  }
-  if(circuito && vehiculo) prepararCarrera();
-  if(circuito && detectorTerreno) {
-    zonasNitro=await crearZonasNitro(loader,circuito,detectorTerreno,escena,MEJORAS);
-    nitro=crearNitro(zonasNitro.zonas);
-    diagnosticos.push(...zonasNitro.avisos);
-    if(zonasNitro.avisos.length)$('diagnostico').open=true;
-  }
-  pintarDiagnostico();
 }
+
+if (modoTest)
+  globalThis.__raceTest = {
+    get listo() {
+      return listo;
+    },
+    get jugadores() {
+      return jugadores;
+    },
+    get partida() {
+      return partida;
+    },
+    get objetos() {
+      return objetos;
+    },
+    get terreno() {
+      return terreno;
+    },
+    get compartidas() {
+      return compartidas;
+    },
+    get renderer() {
+      return renderer;
+    },
+    get escena() {
+      return escena;
+    },
+    get opciones() {
+      return opciones;
+    },
+    teclas,
+    iniciar: iniciarPartida,
+    pausar,
+    continuar,
+    recuperar,
+    menu: volverMenu,
+    detenerRAF() {
+      renderer.setAnimationLoop(null);
+    },
+    avanzar(dt) {
+      cuadro(dt);
+      dibujar();
+    },
+    simular(segundos) {
+      const n = Math.round(segundos * 120);
+      for (let i = 0; i < n; i++) cuadro(1 / 120);
+      dibujar();
+    },
+    dibujar,
+  };
+inicializar();
