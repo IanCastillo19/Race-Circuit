@@ -1,82 +1,105 @@
 import * as THREE from 'three';
 
-// Solo consulta las mallas de suelo indicadas en config.js. Así, el arco
-// de meta y los futuros objetos no se confunden con la carretera.
+// Índice espacial del terreno estático. Acepta caras invertidas y elige la
+// superficie superior sin recorrer todas las mallas en cada paso de física.
 export function crearDetectorTerreno(circuito, config) {
-  const avisos = [];
-  // Compara los nombres con la misma normalización de GLTFLoader.
-  // Acepta tanto 'Plane.002' de Blender como 'Plane002' del juego.
-  const normalizar = nombre => THREE.PropertyBinding.sanitizeNodeName(nombre);
+  const nombre = (n) => THREE.PropertyBinding.sanitizeNodeName(n);
   const tipos = new Map([
-    ...config.nombresAsfalto.map(nombre => [normalizar(nombre), 'asfalto']),
-    ...config.nombresCesped.map(nombre => [normalizar(nombre), 'cesped']),
+    ...config.nombresAsfalto.map((n) => [nombre(n), 'asfalto']),
+    ...config.nombresCesped.map((n) => [nombre(n), 'cesped']),
   ]);
-  const tipoPorMalla = new Map();
-  circuito.traverse(objeto => {
-    if (!objeto.isMesh) return;
-    for (let nodo = objeto; nodo; nodo = nodo.parent) {
-      const nombre = normalizar(nodo.name);
-      if (tipos.has(nombre)) {
-        tipoPorMalla.set(objeto, tipos.get(nombre));
-        break;
-      }
-      if (nodo === circuito) break;
+  const celdas = new Map(),
+    clases = new Set(),
+    caja = new THREE.Box3(),
+    tam = 8;
+  const a = new THREE.Vector3(),
+    b = new THREE.Vector3(),
+    c = new THREE.Vector3(),
+    u = new THREE.Vector3(),
+    v = new THREE.Vector3();
+  circuito.updateWorldMatrix(true, true);
+  circuito.traverse((m) => {
+    if (!m.isMesh || !m.geometry?.attributes.position) return;
+    let tipo;
+    for (let p = m; p; p = p.parent) {
+      if (!p.visible) return;
+      if (!tipo) tipo = tipos.get(nombre(p.name));
+      if (p === circuito) break;
+    }
+    if (!tipo) return;
+    clases.add(tipo);
+    const pos = m.geometry.attributes.position,
+      idx = m.geometry.index,
+      n = idx ? idx.count : pos.count;
+    for (let i = 0; i < n; i += 3) {
+      a.fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(m.matrixWorld);
+      b.fromBufferAttribute(pos, idx ? idx.getX(i + 1) : i + 1).applyMatrix4(m.matrixWorld);
+      c.fromBufferAttribute(pos, idx ? idx.getX(i + 2) : i + 2).applyMatrix4(m.matrixWorld);
+      u.subVectors(b, a);
+      v.subVectors(c, a);
+      u.cross(v);
+      if (Math.abs(u.y) / Math.max(u.length(), 1e-12) < 0.55) continue;
+      const den = (b.z - c.z) * (a.x - c.x) + (c.x - b.x) * (a.z - c.z);
+      if (Math.abs(den) < 1e-12) continue;
+      const t = {
+        ax: a.x,
+        ay: a.y,
+        az: a.z,
+        bx: b.x,
+        by: b.y,
+        bz: b.z,
+        cx: c.x,
+        cy: c.y,
+        cz: c.z,
+        den,
+        tipo,
+      };
+      caja.expandByPoint(a);
+      caja.expandByPoint(b);
+      caja.expandByPoint(c);
+      for (
+        let x = Math.floor(Math.min(a.x, b.x, c.x) / tam);
+        x <= Math.floor(Math.max(a.x, b.x, c.x) / tam);
+        x++
+      )
+        for (
+          let z = Math.floor(Math.min(a.z, b.z, c.z) / tam);
+          z <= Math.floor(Math.max(a.z, b.z, c.z) / tam);
+          z++
+        ) {
+          const k = x + ',' + z;
+          if (!celdas.has(k)) celdas.set(k, []);
+          celdas.get(k).push(t);
+        }
     }
   });
-  const mallas = [...tipoPorMalla.keys()];
-  const clases = new Set(tipoPorMalla.values());
   const disponible = clases.has('asfalto') && clases.has('cesped');
-  if (!disponible) {
-    avisos.push('Césped: no se encuentran ambas superficies. Revisa cesped.nombresCesped y cesped.nombresAsfalto en config.js; la penalización se desactiva hasta corregirlos.');
-  }
-  circuito.updateWorldMatrix(true, true);
-  const caja = new THREE.Box3();
-  for (const malla of mallas) caja.expandByObject(malla, true);
-  const origen = new THREE.Vector3();
-  const abajo = new THREE.Vector3(0, -1, 0);
-  const normal = new THREE.Vector3();
-  const matrizNormal = new THREE.Matrix3();
-  const ray = new THREE.Raycaster();
-  const impactos = [];
-  const altura = caja.max.y + 2;
-  ray.far = altura - caja.min.y + 2;
-
+  const avisos = disponible
+    ? []
+    : ['No se encuentran ambas superficies. Revisa los nombres de asfalto y césped en config.js.'];
   function superficieEn(x, z) {
-    if (!disponible || x < caja.min.x || x > caja.max.x || z < caja.min.z || z > caja.max.z) return null;
-    origen.set(x, altura, z);
-    ray.set(origen, abajo);
-    impactos.length = 0;
-    ray.intersectObjects(mallas, false, impactos);
-    // Three.js ordena los impactos por distancia. La carretera situada
-    // sobre el césped gana; no basta con detectar césped en cualquier altura.
-    for (const impacto of impactos) {
-      if (!impacto.face) continue;
-      let visible = true;
-      for (let nodo = impacto.object; nodo; nodo = nodo.parent) {
-        if (!nodo.visible) { visible = false; break; }
-      }
-      if (!visible) continue;
-      matrizNormal.getNormalMatrix(impacto.object.matrixWorld);
-      normal.copy(impacto.face.normal).applyMatrix3(matrizNormal).normalize();
-      // Conserva la compatibilidad con las normales invertidas del prototipo.
-      if (Math.abs(normal.y) >= 0.55) return { tipo: tipoPorMalla.get(impacto.object), y: impacto.point.y };
+    if (!disponible) return null;
+    let mejor = null;
+    for (const t of celdas.get(Math.floor(x / tam) + ',' + Math.floor(z / tam)) ?? []) {
+      const p = ((t.bz - t.cz) * (x - t.cx) + (t.cx - t.bx) * (z - t.cz)) / t.den;
+      const q = ((t.cz - t.az) * (x - t.cx) + (t.ax - t.cx) * (z - t.cz)) / t.den,
+        r = 1 - p - q;
+      if (p < -0.000001 || q < -0.000001 || r < -0.000001) continue;
+      const y = p * t.ay + q * t.by + r * t.cy;
+      if (!mejor || y > mejor.y) mejor = { y, tipo: t.tipo };
     }
-    return null;
+    return mejor;
   }
-
-  const tipoEn = (x, z) => superficieEn(x, z)?.tipo ?? null;
-  const alturaEn = (x, z) => superficieEn(x, z)?.y ?? null;
-
-  function porcentajeCesped(estado, puntosRuedas) {
-    if (!config.activo || !disponible || !puntosRuedas.length) return 0;
-    const c = Math.cos(estado.rumbo), s = Math.sin(estado.rumbo);
-    let fuera = 0;
-    for (const punto of puntosRuedas) {
-      const x = estado.x + punto.x * c + punto.z * s;
-      const z = estado.z - punto.x * s + punto.z * c;
-      if (tipoEn(x, z) === 'cesped') fuera++;
-    }
-    return fuera / puntosRuedas.length;
+  const tipoEn = (x, z) => superficieEn(x, z)?.tipo ?? null,
+    alturaEn = (x, z) => superficieEn(x, z)?.y ?? null;
+  function porcentajeCesped(e, puntos) {
+    if (!config.activo || !puntos.length) return 0;
+    const c = Math.cos(e.rumbo),
+      s = Math.sin(e.rumbo);
+    return (
+      puntos.filter((p) => tipoEn(e.x + p.x * c + p.z * s, e.z - p.x * s + p.z * c) === 'cesped')
+        .length / puntos.length
+    );
   }
-  return { tipoEn, alturaEn, porcentajeCesped, avisos, disponible };
+  return { tipoEn, alturaEn, superficieEn, porcentajeCesped, disponible, avisos, caja };
 }

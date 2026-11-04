@@ -2,9 +2,12 @@ import * as THREE from 'three';
 
 // No crea paredes visibles: exige suelo bajo el centro y las cuatro esquinas
 // del coche. Se puede restringir a una malla/grupo concreto del GLB.
-export function crearLimite(circuito, config) {
+export function crearLimite(circuito, config, terreno = null) {
   const zona = config.nombreZona ? circuito.getObjectByName(config.nombreZona) : circuito;
-  if (!zona) throw new Error(`No existe la zona de conducción '${config.nombreZona}'. Revisa su nombre en el panel.`);
+  if (!zona)
+    throw new Error(
+      `No existe la zona de conducción '${config.nombreZona}'. Revisa su nombre en el panel.`,
+    );
   circuito.updateWorldMatrix(true, true);
   const caja = new THREE.Box3().setFromObject(zona, true);
   if (caja.isEmpty()) throw new Error('La zona de conducción no contiene geometría.');
@@ -20,13 +23,18 @@ export function crearLimite(circuito, config) {
   const margen = Math.max(0, config.margen);
 
   function alturaEn(x, z) {
+    if (terreno && !config.nombreZona) return terreno.alturaEn(x, z);
     if (x < caja.min.x || x > caja.max.x || z < caja.min.z || z > caja.max.z) return null;
-    origen.set(x, altura, z); ray.set(origen, abajo);
+    origen.set(x, altura, z);
+    ray.set(origen, abajo);
     for (const impacto of ray.intersectObject(zona, true)) {
       if (!impacto.face) continue;
       let visible = true;
       for (let nodo = impacto.object; nodo; nodo = nodo.parent) {
-        if (!nodo.visible) { visible = false; break; }
+        if (!nodo.visible) {
+          visible = false;
+          break;
+        }
       }
       if (!visible) continue;
       transformacion.copy(impacto.object.matrixWorld);
@@ -44,7 +52,8 @@ export function crearLimite(circuito, config) {
   function contiene(x, z, rumbo, huella) {
     const ancho = huella.semiancho + margen;
     const largo = huella.semilargo + margen;
-    const c = Math.cos(rumbo), s = Math.sin(rumbo);
+    const c = Math.cos(rumbo),
+      s = Math.sin(rumbo);
     if (alturaEn(x, z) === null) return false;
     for (const dx of [-ancho, ancho]) {
       for (const dz of [-largo, largo]) {
@@ -71,8 +80,11 @@ export function crearLimite(circuito, config) {
         ]);
       }
     }
-    candidatos.sort((a, b) => Math.hypot(a[0] - posicion[0], a[1] - posicion[2])
-      - Math.hypot(b[0] - posicion[0], b[1] - posicion[2]));
+    candidatos.sort(
+      (a, b) =>
+        Math.hypot(a[0] - posicion[0], a[1] - posicion[2]) -
+        Math.hypot(b[0] - posicion[0], b[1] - posicion[2]),
+    );
     for (const [x, z] of candidatos) {
       if (contiene(x, z, rumbo, huella)) return [x, alturaEn(x, z), z];
     }
