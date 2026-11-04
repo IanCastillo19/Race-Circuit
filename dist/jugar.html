@@ -42,91 +42,102 @@
         <span id="cuenta-texto">3</span><small data-i18n="preparate">PREPÁRATE</small>
       </div>
       <div id="mensaje" class="mensaje" role="status"></div>
-      <section id="pantalla-menu" class="capa">
+      <section id="pantalla-menu" class="capa" data-ambiente="costa">
         <div class="menu-layout">
           <div class="presentacion">
-            <span class="etiqueta">RACE CIRCUIT · ARCADE</span>
-            <h1>
-              <span data-i18n="tresVueltas">TRES VUELTAS.</span><br /><em data-i18n="aFondo"
-                >A FONDO.</em
-              >
-            </h1>
-            <p data-i18n="intro">
-              Turbos, obstáculos y curvas. Mejora tu marca o reta a alguien a tu lado.
-            </p>
-            <div class="chips">
-              <span>WASD / ↑↓←→</span><span data-i18n="local">1–2 JUGADORES · LOCAL</span>
-            </div>
-            <img id="imagen-ambiente" src="./assets/coast.webp" alt="" class="imagen-ambiente" />
+            <h1>RACE <em>CIRCUIT</em></h1>
+            <p class="lema"><span data-i18n="tresVueltas">TRES VUELTAS.</span> <span data-i18n="aFondo">A FONDO.</span></p>
           </div>
-          <div class="tarjeta">
-            <div class="tarjeta-cabecera">
-              <span class="etiqueta" data-i18n="configura">CONFIGURA TU CARRERA</span
-              ><span class="punto"></span>
-            </div>
-            <label for="modo" data-i18n="modo">Modo de juego</label>
-            <select id="modo">
-              <option value="1" data-i18n="unJugador">Un jugador · Contrarreloj</option>
-              <option value="2" data-i18n="dosJugadores">Dos jugadores · Pantalla dividida</option>
-            </select>
-            <div class="dos-columnas">
-              <div>
-                <label for="ambiente" data-i18n="ambiente">Ambiente</label
-                ><select id="ambiente">
-                  <option value="costa" data-i18n="costa">Costa</option>
-                  <option value="neon" data-i18n="neon">Neón</option>
-                  <option value="alpino" data-i18n="alpino">Alpino</option>
-                </select>
+          <div class="tarjeta tarjeta-menu">
+            <h2 data-i18n="configura">CONFIGURA TU CARRERA</h2>
+            <fieldset id="modo" class="ajuste-menu">
+              <legend data-i18n="modo">Modo de juego</legend>
+              <div class="segmentos segmentos-modo">
+                <label>
+                  <input type="radio" name="modo" value="1" checked />
+                  <span class="segmento"><span data-i18n="unJugador">1 jugador</span>
+                    <small data-i18n="contrarreloj">Contrarreloj</small></span>
+                </label>
+                <label>
+                  <input type="radio" name="modo" value="2" />
+                  <span class="segmento"><span data-i18n="dosJugadores">2 jugadores</span>
+                    <small data-i18n="pantallaDividida">Pantalla dividida</small></span>
+                </label>
               </div>
-              <div>
-                <label for="calidad" data-i18n="calidad">Calidad</label
-                ><select id="calidad">
-                  <option value="baja" data-i18n="baja">Baja</option>
-                  <option value="media" data-i18n="media">Media</option>
-                  <option value="alta" data-i18n="alta">Alta</option>
-                </select>
+            </fieldset>
+            <fieldset id="ambiente" class="ajuste-menu">
+              <legend data-i18n="ambiente">Ambiente</legend>
+              <div class="segmentos segmentos-ambiente">
+                <label>
+                  <input type="radio" name="ambiente" value="costa" checked />
+                  <span class="segmento"><span data-i18n="costa">Costa</span></span>
+                </label>
+                <label>
+                  <input type="radio" name="ambiente" value="neon" />
+                  <span class="segmento"><span data-i18n="neon">Neón</span></span>
+                </label>
+                <label>
+                  <input type="radio" name="ambiente" value="alpino" />
+                  <span class="segmento"><span data-i18n="alpino">Alpino</span></span>
+                </label>
               </div>
+            </fieldset>
+            <fieldset id="calidad" class="ajuste-menu">
+              <legend data-i18n="calidad">Calidad</legend>
+              <div class="segmentos segmentos-calidad">
+                <label>
+                  <input type="radio" name="calidad" value="baja" />
+                  <span class="segmento"><span data-i18n="baja">Baja</span></span>
+                </label>
+                <label>
+                  <input type="radio" name="calidad" value="media" checked />
+                  <span class="segmento"><span data-i18n="media">Media</span></span>
+                </label>
+                <label>
+                  <input type="radio" name="calidad" value="alta" />
+                  <span class="segmento"><span data-i18n="alta">Alta</span></span>
+                </label>
+              </div>
+            </fieldset>
+            <div class="interruptores">
+              <label class="interruptor">
+                <span data-i18n="obstaculos">Rocas y plátanos</span>
+                <input id="objetos" type="checkbox" role="switch" checked />
+              </label>
+              <label class="interruptor">
+                <span data-i18n="sonido">Sonido</span>
+                <input id="sonido" type="checkbox" role="switch" />
+              </label>
             </div>
-            <p class="nota-ambiente" data-i18n="mismoCircuito">
-              El circuito prototipo, con tres ambientes visuales.
-            </p>
-            <div class="dos-columnas opciones">
-              <label class="check"
-                ><input id="objetos" type="checkbox" checked /><span data-i18n="obstaculos"
-                  >Rocas y plátanos</span
-                ></label
-              ><label class="check"
-                ><input id="sonido" type="checkbox" /><span data-i18n="sonido">Sonido</span></label
-              >
+            <fieldset id="idioma" class="ajuste-menu">
+              <legend data-i18n="idioma">Idioma</legend>
+              <div class="segmentos segmentos-idioma">
+                <label>
+                  <input type="radio" name="idioma" value="es" checked />
+                  <span class="segmento"><span>ES</span></span>
+                </label>
+                <label>
+                  <input type="radio" name="idioma" value="ca" />
+                  <span class="segmento"><span>CA</span></span>
+                </label>
+                <label>
+                  <input type="radio" name="idioma" value="en" />
+                  <span class="segmento"><span>EN</span></span>
+                </label>
+              </div>
+            </fieldset>
+            <button id="empezar" class="primario" type="button" disabled data-i18n="cargando">Cargando modelos…</button>
+            <div class="controles-menu">
+              <div><b class="j1">J1</b><span data-i18n="controlesJ1">WASD · F para recolocarte</span></div>
+              <div><b class="j2">J2</b><span data-i18n="controlesJ2">Flechas · Enter para recolocarte</span></div>
             </div>
-            <div class="idioma-fila">
-              <label for="idioma" data-i18n="idioma">Idioma</label
-              ><select id="idioma">
-                <option value="es">Castellano</option>
-                <option value="ca">Català</option>
-                <option value="en">English</option>
-              </select>
-            </div>
-            <button id="empezar" class="primario" type="button" disabled data-i18n="cargando">
-              Cargando modelos…
-            </button>
             <p id="estado-carga" class="nota" role="status"></p>
             <p id="marca-menu" class="nota"></p>
-            <div class="controles-menu">
-              <div>
-                <b class="j1">J1</b><span data-i18n="controlesJ1">WASD · F para recolocarte</span>
-              </div>
-              <div>
-                <b class="j2">J2</b
-                ><span data-i18n="controlesJ2">Flechas · Enter para recolocarte</span>
-              </div>
-            </div>
             <details id="diagnostico">
               <summary data-i18n="modelos">Modelos y ajustes</summary>
               <pre id="lista-modelos"></pre>
               <p class="nota" data-i18n="ajustarInicio">
-                En Ver circuito, Mayús + clic prueba otra salida para J1. Desactiva el récord de esa
-                sesión.
+                En Ver circuito, Mayús + clic prueba otra salida para J1. Desactiva el récord de esa sesión.
               </p>
             </details>
           </div>

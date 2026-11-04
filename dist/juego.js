@@ -77,11 +77,10 @@ for (const k of ['modo', 'ambiente'])
   if (permitidos[k].includes(parametros.get(k))) opciones[k] = parametros.get(k);
 for (const k of Object.keys(opciones)) {
   if (typeof opciones[k] === 'boolean') $(k).checked = opciones[k];
-  else $(k).value = opciones[k];
+  else $(k).querySelector(`input[value="${opciones[k]}"]`).checked = true;
 }
 ui.traducir(opciones.idioma);
-$('imagen-ambiente').src =
-  './assets/' + { costa: 'coast', neon: 'neon', alpino: 'alpine' }[opciones.ambiente] + '.webp';
+$('pantalla-menu').dataset.ambiente = opciones.ambiente;
 
 const escena = new THREE.Scene();
 escena.background = new THREE.Color('#07111e');
@@ -130,7 +129,7 @@ function guardarOpciones() {
 }
 function leerOpciones() {
   for (const k of Object.keys(opciones))
-    opciones[k] = typeof opciones[k] === 'boolean' ? $(k).checked : $(k).value;
+    opciones[k] = typeof opciones[k] === 'boolean' ? $(k).checked : $(k).querySelector(':checked').value;
   guardarOpciones();
 }
 function claveRecord() {
@@ -152,7 +151,7 @@ function leerRecord() {
 }
 function pintarMarcaMenu() {
   const e = $('marca-menu');
-  e.hidden = $('modo').value !== '1';
+  e.hidden = $('modo').querySelector(':checked').value !== '1';
   const clave =
     'race-circuit-record:arcade-v2:solo:' +
     TRAZADO.id +
@@ -381,6 +380,7 @@ function volverMenu() {
   partida.inspeccion = false;
   if (orbit) orbit.enabled = false;
   teclas.clear();
+  $('mensaje').textContent = '';
   audio.actualizar([], false);
   pintarPantallas();
 }
@@ -749,23 +749,24 @@ function enlazar() {
     if (!(await audio.activar(opciones.sonido))) mensaje(ui.t.noSonido);
     pintarPantallas();
   });
-  $('idioma').addEventListener('change', () => {
-    opciones.idioma = $('idioma').value;
-    ui.traducir(opciones.idioma);
-    guardarOpciones();
-    if (listo) $('empezar').textContent = ui.t.empezar;
-    if (partida.fase === 'resultado') mostrarResultados();
-    pintarPantallas();
+  $('pantalla-menu').addEventListener('change', (e) => {
+    leerOpciones();
+    $('pantalla-menu').dataset.ambiente = opciones.ambiente;
+    if (e.target.name === 'idioma') {
+      ui.traducir(opciones.idioma);
+      if (listo) $('estado-carga').textContent = ui.t.listo;
+      pintarPantallas();
+    } else {
+      pintarMarcaMenu();
+    }
   });
-  $('ambiente').addEventListener('change', () => {
-    $('imagen-ambiente').src =
-      './assets/' +
-      { costa: 'coast', neon: 'neon', alpino: 'alpine' }[$('ambiente').value] +
-      '.webp';
-  });
-  for (const id of ['modo', 'objetos']) $(id).addEventListener('change', pintarMarcaMenu);
   window.addEventListener('keydown', (e) => {
     if (e.target.matches('input,textarea,select,[contenteditable=true]')) return;
+    if (
+      partida.fase === 'menu' &&
+      e.target.closest('button,a,summary') &&
+      ['Space', 'Enter'].includes(e.code)
+    ) return;
     if (
       [
         'KeyW',
@@ -888,6 +889,7 @@ async function inicializar() {
     actualizarVisuales(0);
     listo = true;
     $('empezar').disabled = false;
+    $('empezar').dataset.i18n = 'empezar';
     $('empezar').textContent = ui.t.empezar;
     $('estado-carga').textContent = ui.t.listo;
     $('lista-modelos').textContent =
