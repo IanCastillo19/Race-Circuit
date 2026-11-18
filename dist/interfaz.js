@@ -36,7 +36,8 @@ export const TEXTOS = {
     pausa: 'Pausa',
     menu: 'Menú',
     recorrido: 'RECORRIDO',
-    preparate: 'PREPÁRATE',
+    preparate: 'ACELERA CUANDO VEAS EL 1',
+    salidaAnticipada: 'Salida anticipada',
     enPausa: 'CARRERA EN PAUSA',
     pausaAyuda: 'El tiempo, los turbos y los objetos están detenidos.',
     continuar: 'Continuar',
@@ -108,7 +109,8 @@ export const TEXTOS = {
     pausa: 'Pausa',
     menu: 'Menú',
     recorrido: 'RECORREGUT',
-    preparate: 'PREPARA’T',
+    preparate: 'ACCELERA QUAN VEGIS L’1',
+    salidaAnticipada: 'Sortida anticipada',
     enPausa: 'CURSA EN PAUSA',
     pausaAyuda: 'El temps, els turbos i els objectes estan aturats.',
     continuar: 'Continuar',
@@ -180,7 +182,8 @@ export const TEXTOS = {
     pausa: 'Pause',
     menu: 'Menu',
     recorrido: 'TRACK',
-    preparate: 'GET READY',
+    preparate: 'ACCELERATE WHEN YOU SEE 1',
+    salidaAnticipada: 'False start',
     enPausa: 'RACE PAUSED',
     pausaAyuda: 'The clock, boosts and objects are paused.',
     continuar: 'Resume',
@@ -377,8 +380,9 @@ export function crearInterfaz() {
       );
       r.nitro.style.width =
         Math.min(100, (j.nitro.restante / Math.max(0.001, j.nitro.config.duracion)) * 100) + '%';
-      const aviso =
-        j.recuperando > 0
+      const aviso = j.penalizacionSalida > 0
+        ? t.salidaAnticipada + ' · ' + j.penalizacionSalida.toFixed(1) + ' s'
+        : j.recuperando > 0
           ? t.recuperando + ' ' + j.recuperando.toFixed(1) + ' s'
           : j.derrape > 0
             ? t.derrape
