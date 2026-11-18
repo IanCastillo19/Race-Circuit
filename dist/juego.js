@@ -43,13 +43,11 @@ const parametros = new URLSearchParams(location.search),
 const permitidos = {
   modo: ['1', '2'],
   ambiente: ['costa', 'neon', 'alpino'],
-  calidad: ['baja', 'media', 'alta'],
   idioma: ['es', 'ca', 'en'],
 };
 let opciones = {
   modo: '1',
   ambiente: 'costa',
-  calidad: 'media',
   objetos: true,
   sonido: false,
   idioma: 'es',
@@ -195,7 +193,7 @@ function apta(e, huella, asfalto = false) {
   if (limite && !limite.contiene(e.x, e.z, e.rumbo, huella)) return false;
   if (terreno.alturaEn(e.x, e.z) === null) return false;
   if (asfalto && terreno.tipoEn(e.x, e.z) !== 'asfalto') return false;
-  return !opciones.objetos || !objetos.rocas.some((r) => circuloContraCoche(e, huella, r));
+  return !opciones.objetos || !objetos.rocas.some((r) => r.modelo.visible && circuloContraCoche(e, huella, r));
 }
 function buscarPosicion(pose, j, desplazamiento = 0) {
   const c = Math.cos(pose.rumbo),
@@ -287,6 +285,7 @@ function prepararJugadores() {
       carrera: crearCarrera(puertas, TRAZADO.vueltas, 0),
       puntos: vehiculo.ruedas.map((r) => ({ x: r.centro.x, z: r.centro.z })),
       penalizacionSalida: 0,
+      aturdimiento: 0,
       recuperando: 0,
       fantasma: 0,
       derrape: 0,
@@ -345,9 +344,6 @@ async function iniciarPartida() {
   ambiente.cambiar(opciones.ambiente);
   prepararJugadores();
   for (const t of aceleradoresPulsados) comprobarSalida(t);
-  renderer.setPixelRatio(
-    Math.min(devicePixelRatio, { baja: 1, media: 1.5, alta: 2 }[opciones.calidad]),
-  );
   redimensionar();
   $('escena').focus({ preventScroll: true });
   if (opciones.sonido && !(await audio.activar(true))) mensaje(ui.t.noSonido);
@@ -411,9 +407,11 @@ function verCircuito() {
 function recuperar(id) {
   if (partida.fase !== 'corriendo') return;
   const j = jugadores.find((p) => p.id === id);
-  if (!j || j.recuperando > 0 || j.penalizacionSalida > 0) return;
+  if (!j || j.aturdimiento > 0 || j.recuperando > 0 || j.penalizacionSalida > 0) return;
   const pose = buscarPosicion(j.ultimoPunto, j, jugadores.length === 2 ? (id === 1 ? -1 : 1) : 0);
   colocar(j, pose);
+  j.carrera.controlOmitido = false;
+  if (j.carrera.control === 0) j.carrera.salioDeParrilla = false;
   j.recuperando = AJUSTES.recuperacionSegundos;
   j.fantasma = AJUSTES.inmunidadRecuperacion;
   audio.efecto('recuperar');
@@ -468,7 +466,8 @@ function paso(dt) {
     const mejorada = ajustarConduccion(CONFIG.conduccion, j.estado.velocidad, j.nitro);
     const ajustes = conduccionEnTerreno(mejorada, CONFIG.cesped, j.cesped);
     j.limiteHud = j.estado.velocidad < 0 ? ajustes.velocidadMarchaAtras : ajustes.velocidadMaxima;
-    const inmovil = j.recuperando > 0 || j.penalizacionSalida > 0;
+    const inmovil = j.recuperando > 0 || j.penalizacionSalida > 0 || j.aturdimiento > 0;
+    j.aturdimiento = Math.max(0, j.aturdimiento - dt);
     fisica.conducir(j, entradaJugador(j), ajustes, (terreno.alturaEn(j.estado.x, j.estado.z) ?? 0) + .015, inmovil);
     j.penalizacionSalida = Math.max(0, j.penalizacionSalida - dt);
   }
@@ -477,10 +476,16 @@ function paso(dt) {
     audio.efecto('golpe');
     if (a) a.golpe = .6;
     if (b) b.golpe = .6;
+  }, j => {
+    j.aturdimiento = AJUSTES.aturdimientoRocaSegundos;
+    j.derrape = 0;
+    j.nitro.restante = 0;
+    audio.efecto('golpe');
   });
   for (const j of jugadores) {
     j.avance = fisica.leer(j, CONFIG.limites.activo ? limite : null, terreno);
     j.distanciaFrame += j.avance;
+    if (j.aturdimiento > 0) continue;
     if (
       actualizarNitro(
         j.nitro,

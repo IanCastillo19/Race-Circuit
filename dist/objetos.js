@@ -88,6 +88,7 @@ export async function crearObjetos(loader, circuito, terreno, escena, ajustes) {
     platanos,
     avisos,
     reiniciar() {
+      for (const roca of rocas) roca.modelo.visible = true;
       platanos.forEach((p) => {
         p.recarga = 0;
         p.modelo.visible = true;
