@@ -455,6 +455,7 @@ function paso(dt) {
     }
     const mejorada = ajustarConduccion(CONFIG.conduccion, j.estado.velocidad, j.nitro),
       ajustes = conduccionEnTerreno(mejorada, CONFIG.cesped, j.cesped);
+    j.limiteHud = j.estado.velocidad < 0 ? ajustes.velocidadMarchaAtras : ajustes.velocidadMaxima;
     let roca = false;
     const movimiento = avanzarConLimite(
       j.estado,
@@ -596,7 +597,6 @@ function actualizarVisuales(dt) {
   }
   nitroVisual?.actualizar({ zonas: compartidas });
   senales?.actualizar(jugadores);
-  minimapa?.pintar(jugadores);
   ui.pintar(jugadores);
   audio.actualizar(jugadores, partida.fase === 'corriendo');
 }
@@ -633,7 +633,7 @@ function redimensionar() {
   alto = Math.max(1, $('escena').clientHeight);
   if (renderer) renderer.setSize(ancho, alto, false);
   pantallas = dividirPantallas(ancho, alto, jugadores.length || 1);
-  ui.crearHuds(jugadores, pantallas);
+  ui.crearHuds(jugadores, pantallas, minimapa);
   document.body.classList.toggle('dos-jugadores', jugadores.length === 2);
   const separador = $('separador');
   separador.style.cssText =
@@ -670,7 +670,7 @@ function pintarPantallas() {
   $('pantalla-resultados').hidden = !resultado;
   $('cuenta').hidden = partida.fase !== 'cuenta';
   $('huds').hidden = menu || resultado || partida.inspeccion;
-  $('mapa-panel').hidden = menu || resultado || partida.inspeccion;
+  document.body.classList.toggle('en-pista', !menu && !resultado && !pausa && !partida.inspeccion);
   $('separador').hidden = menu || resultado || partida.inspeccion || jugadores.length !== 2;
   $('ayuda-teclas').hidden = menu || resultado || partida.inspeccion;
   $('pausa').textContent = pausa ? ui.t.continuar : ui.t.pausa;
@@ -884,7 +884,7 @@ async function inicializar() {
     compartidas = nitroVisual.zonas.map((p) => ({ ...p, recarga: 0 }));
     senales = crearSenales(puertas, terreno, escena);
     senales.grupo.visible = TRAZADO.mostrarControles;
-    minimapa = crearMinimapa($('minimapa'), circuito, puertas, CONFIG.cesped.nombresAsfalto);
+    minimapa = crearMinimapa(circuito, puertas, CONFIG.cesped.nombresAsfalto);
     prepararJugadores();
     actualizarVisuales(0);
     listo = true;

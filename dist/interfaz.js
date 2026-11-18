@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CONFIG } from './config.js';
 import { formatearTiempo } from './carrera.js';
 
 export const TEXTOS = {
@@ -48,6 +49,8 @@ export const TEXTOS = {
     atajos: 'P / Esc pausa · R reinicia · F / Enter recoloca',
     vuelta: 'VUELTA',
     tiempo: 'TIEMPO',
+    posicion: 'POSICIÓN',
+    mejorVuelta: 'MEJOR VUELTA',
     control: 'CONTROL',
     meta: 'META',
     asfalto: 'Asfalto',
@@ -118,6 +121,8 @@ export const TEXTOS = {
     atajos: 'P / Esc pausa · R reinicia · F / Retorn recol·loca',
     vuelta: 'VOLTA',
     tiempo: 'TEMPS',
+    posicion: 'POSICIÓ',
+    mejorVuelta: 'MILLOR VOLTA',
     control: 'CONTROL',
     meta: 'META',
     asfalto: 'Asfalt',
@@ -188,6 +193,8 @@ export const TEXTOS = {
     atajos: 'P / Esc pause · R restart · F / Enter recover',
     vuelta: 'LAP',
     tiempo: 'TIME',
+    posicion: 'POSITION',
+    mejorVuelta: 'BEST LAP',
     control: 'CHECKPOINT',
     meta: 'FINISH',
     asfalto: 'Road',
@@ -218,6 +225,62 @@ const poner = (e, valor) => {
   const s = String(valor);
   if (e.textContent !== s) e.textContent = s;
 };
+const INICIO = -126;
+const BARRIDO = 252;
+const angulo = (valor, maximo) => INICIO + BARRIDO * Math.min(1, Math.max(0, valor / maximo));
+function puntoDial(grados, radio) {
+  const a = grados * Math.PI / 180;
+  return [100 + Math.sin(a) * radio, 100 - Math.cos(a) * radio];
+}
+function arco(desde, hasta, radio) {
+  const a = puntoDial(desde, radio), b = puntoDial(hasta, radio);
+  return `M ${a} A ${radio} ${radio} 0 ${hasta - desde > 180 ? 1 : 0} 1 ${b}`;
+}
+function esfera(maximo) {
+  const marcas = [];
+  for (let kmh = 0; kmh <= maximo; kmh += 5) {
+    const grados = angulo(kmh, maximo), mayor = kmh % 20 === 0;
+    const [x1, y1] = puntoDial(grados, mayor ? 83 : 88);
+    const [x2, y2] = puntoDial(grados, 93);
+    marcas.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${mayor ? 'mayor' : ''}"/>`);
+    if (mayor) {
+      const [x, y] = puntoDial(grados, 72);
+      marcas.push(`<text x="${x}" y="${y}">${kmh}</text>`);
+    }
+  }
+  return `<svg viewBox="0 0 200 178" aria-hidden="true" class="dial-esfera">
+    <path class="dial-carril" d="${arco(INICIO, INICIO + BARRIDO, 96)}"/>
+    <path class="dial-limite" data-ref="zonaRoja"/>
+    <path class="dial-carga" d="${arco(INICIO, INICIO + BARRIDO, 96)}" pathLength="100" data-ref="arco"/>
+    <g class="dial-marcas">${marcas.join('')}</g>
+    <g data-ref="aguja"><path class="dial-aguja" d="M 100 5 L 103 43 L 100 56 L 97 43 Z"/></g>
+  </svg>`;
+}
+
+function ordenarParrilla(jugadores) {
+  // Con los mismos controles validados, va delante quien está más cerca del siguiente.
+  const distancia = (j) => {
+    const puerta = j.carrera.puertas[j.carrera.control];
+    return Math.hypot(puerta.x - j.estado.x, puerta.z - j.estado.z);
+  };
+  return [...jugadores].sort((a, b) =>
+    b.carrera.vueltasCompletadas - a.carrera.vueltasCompletadas ||
+    b.carrera.control - a.carrera.control ||
+    (a.carrera.fase === 'terminada' ? a.carrera.tiempo - b.carrera.tiempo : distancia(a) - distancia(b)) ||
+    a.id - b.id);
+}
+
+function marchaAutomatica(velocidad, anterior, maxima) {
+  if (velocidad < -0.06) return 'R';
+  if (velocidad < 0.06) return 'N';
+  const banda = maxima / 5;
+  let marcha = typeof anterior === 'number' ? anterior : 1;
+  // Un pequeño margen al reducir evita que el número oscile al mantener el gas.
+  while (marcha < 6 && velocidad >= banda * marcha) marcha++;
+  while (marcha > 1 && velocidad < banda * (marcha - 1) - banda * 0.12) marcha--;
+  return marcha;
+}
+
 export function crearInterfaz() {
   let idioma = 'es',
     referencias = [];
@@ -228,23 +291,41 @@ export function crearInterfaz() {
       .querySelectorAll('[data-i18n]')
       .forEach((e) => poner(e, TEXTOS[idioma][e.dataset.i18n] ?? e.dataset.i18n));
   }
-  function crearHuds(jugadores, pantallas) {
-    const root = document.getElementById('huds');
-    root.innerHTML = '';
+  const contenedor = document.getElementById('huds');
+  let mapa;
+  function crearHuds(jugadores, pantallas, trazadoMapa) {
+    mapa = trazadoMapa;
+    contenedor.replaceChildren();
     referencias = [];
     jugadores.forEach((j, i) => {
       const h = document.createElement('section');
       h.className = 'jugador-hud';
       h.style.setProperty('--jugador', j.color);
       h.dataset.id = j.id;
-      h.innerHTML =
-        '<div class="hud-top"><b class="hud-nombre">J' +
-        j.id +
-        '</b><div class="hud-datos"><div><small data-i18n="vuelta"></small><strong data-ref="vuelta"></strong></div><div><small data-i18n="tiempo"></small><strong data-ref="tiempo"></strong></div><div><small data-i18n="control"></small><strong data-ref="control"></strong></div></div></div><div class="hud-abajo"><div class="hud-velocidad"><strong data-ref="velocidad">0</strong><small>km/h</small></div><div class="hud-efecto"><span data-ref="efecto"></span><div class="barra-nitro"><span data-ref="nitro"></span></div><button class="recolocar" data-jugador="' +
-        j.id +
-        '" type="button"><span data-i18n="recolocar"></span> · ' +
-        (i === 0 ? 'F' : 'Enter') +
-        '</button></div></div><p class="hud-aviso" data-ref="aviso" hidden></p>';
+      const maximo = Math.ceil(CONFIG.conduccion.velocidadMaxima * 3.6 * j.nitro.config.factorVelocidad / 20) * 20;
+      h.innerHTML = `
+        <div class="hud-crono">
+          <div class="hud-cabecera"><strong data-ref="vuelta"></strong><span data-i18n="vuelta"></span></div>
+          <dl class="hud-tiempos">
+            <div><dt data-i18n="tiempo"></dt><dd data-ref="tiempo"></dd></div>
+            <div><dt data-i18n="vuelta"></dt><dd data-ref="parcial"></dd></div>
+            <div><dt data-i18n="mejorVuelta"></dt><dd data-ref="mejor"></dd></div>
+          </dl>
+        </div>
+        <div class="hud-puesto"><span data-i18n="posicion"></span><strong data-ref="posicion"></strong>
+          ${jugadores.length > 1 ? `<small>J${j.id}</small>` : ''}</div>
+        <div class="hud-navegacion">
+          <div class="hud-mapa"><canvas width="320" height="320" data-ref="mapa"></canvas></div>
+          <div class="hud-control"><i></i><span data-i18n="control"></span> <b data-ref="control"></b></div>
+        </div>
+        <div class="hud-instrumentos"><div class="dial" data-ref="dial">
+          ${esfera(maximo)}
+          <div class="dial-lectura"><small>KM/H</small><strong data-ref="velocidad">0</strong>
+            <span class="dial-auto">AUTO <b data-ref="marcha">N</b></span></div>
+        </div>
+        <div class="hud-efecto"><span data-ref="efecto"></span><div class="barra-nitro"><span data-ref="nitro"></span></div></div></div>
+        <button class="recolocar" data-jugador="${j.id}" type="button"><kbd>${i ? '↵' : 'F'}</kbd> <span data-i18n="recolocar"></span></button>
+        <p class="hud-aviso" data-ref="aviso" hidden></p>`;
       const p = pantallas[i];
       Object.assign(h.style, {
         left: p.left + 'px',
@@ -252,30 +333,40 @@ export function crearInterfaz() {
         width: p.w + 'px',
         height: p.h + 'px',
       });
-      root.append(h);
-      referencias.push(
-        Object.fromEntries([...h.querySelectorAll('[data-ref]')].map((e) => [e.dataset.ref, e])),
-      );
+      contenedor.append(h);
+      const r = Object.fromEntries([...h.querySelectorAll('[data-ref]')].map(e => [e.dataset.ref, e]));
+      referencias.push({ ...r, maximo, ctx: r.mapa.getContext('2d') });
     });
     traducir(idioma);
   }
   function pintar(jugadores) {
     const t = TEXTOS[idioma];
+    const parrilla = ordenarParrilla(jugadores);
     jugadores.forEach((j, i) => {
       const r = referencias[i];
       if (!r) return;
-      poner(
-        r.vuelta,
-        Math.min(j.carrera.vueltasCompletadas + 1, j.carrera.vueltas) + '/' + j.carrera.vueltas,
-      );
-      poner(r.tiempo, formatearTiempo(j.carrera.tiempo));
-      poner(
-        r.control,
-        j.carrera.control === j.carrera.puertas.length - 1
-          ? t.meta
-          : j.carrera.control + 1 + '/' + (j.carrera.puertas.length - 1),
-      );
-      poner(r.velocidad, Math.round(Math.abs(j.estado.velocidad) * 3.6));
+      const c = j.carrera;
+      poner(r.vuelta, Math.min(c.vueltasCompletadas + 1, c.vueltas) + '/' + c.vueltas);
+      poner(r.posicion, (parrilla.indexOf(j) + 1) + '/' + parrilla.length);
+      poner(r.tiempo, formatearTiempo(c.tiempo));
+      poner(r.parcial, formatearTiempo(c.fase === 'terminada' ? c.tiemposVuelta.at(-1) : c.tiempo - c.inicioVuelta));
+      poner(r.mejor, c.tiemposVuelta.length ? formatearTiempo(Math.min(...c.tiemposVuelta)) : '—');
+      poner(r.control, c.control === c.puertas.length - 1 ? t.meta : (c.control + 1) + '/' + (c.puertas.length - 1));
+      const kmh = Math.abs(j.estado.velocidad) * 3.6;
+      const limite = (j.limiteHud ?? CONFIG.conduccion.velocidadMaxima) * 3.6;
+      const fraccion = Math.min(1, kmh / r.maximo);
+      poner(r.velocidad, Math.round(kmh));
+      r.ultimaMarcha = marchaAutomatica(j.estado.velocidad, r.ultimaMarcha, CONFIG.conduccion.velocidadMaxima);
+      poner(r.marcha, r.ultimaMarcha);
+      r.aguja.setAttribute('transform', `rotate(${angulo(kmh, r.maximo)} 100 100)`);
+      r.arco.setAttribute('stroke-dasharray', `${fraccion * 100} 100`);
+      if (r.ultimoLimite !== limite) {
+        r.zonaRoja.setAttribute('d', arco(angulo(limite * .90, r.maximo), angulo(limite, r.maximo), 96));
+        r.ultimoLimite = limite;
+      }
+      const calor = Math.min(1, Math.max(0, (kmh / limite - .85) / .15));
+      r.dial.style.setProperty('--calor', Math.round(calor * 100) + '%');
+      if (!contenedor.hidden) mapa?.pintar(r.ctx, j, jugadores);
       poner(
         r.efecto,
         j.nitro.restante > 0
@@ -308,11 +399,9 @@ export function crearInterfaz() {
   };
 }
 
-export function crearMinimapa(canvas, circuito, puertas, nombresAsfalto) {
-  const ctx = canvas.getContext('2d'),
-    base = document.createElement('canvas');
-  base.width = canvas.width;
-  base.height = canvas.height;
+export function crearMinimapa(circuito, puertas, nombresAsfalto) {
+  const base = document.createElement('canvas');
+  base.width = base.height = 1024;
   const fondo = base.getContext('2d'),
     triangulos = [],
     caja = new THREE.Box3(),
@@ -339,53 +428,63 @@ export function crearMinimapa(canvas, circuito, puertas, nombresAsfalto) {
       triangulos.push(puntos);
     }
   });
-  const escala = Math.min(
-    (canvas.width - 25) / (caja.max.x - caja.min.x),
-    (canvas.height - 25) / (caja.max.z - caja.min.z),
-  );
+  // Rasterizar la carretera una sola vez, también para el segundo jugador.
   const centro = caja.getCenter(new THREE.Vector3());
-  const proyectar = (p) => ({
-    x: canvas.width / 2 + (p.x - centro.x) * escala,
-    y: canvas.height / 2 + (p.z - centro.z) * escala,
-  });
-  fondo.fillStyle = '#587282';
-  triangulos.forEach((t) => {
+  const escala = 980 / Math.max(1, caja.max.x - caja.min.x, caja.max.z - caja.min.z);
+  const px = x => 512 + (x - centro.x) * escala;
+  const py = z => 512 + (z - centro.z) * escala;
+  fondo.fillStyle = fondo.strokeStyle = '#a7e9ee';
+  fondo.lineWidth = 0.65;
+  for (const [a, b, c] of triangulos) {
     fondo.beginPath();
-    t.forEach((p, i) => {
-      const q = proyectar(p);
-      if (i === 0) fondo.moveTo(q.x, q.y);
-      else fondo.lineTo(q.x, q.y);
-    });
+    fondo.moveTo(px(a.x), py(a.z));
+    fondo.lineTo(px(b.x), py(b.z));
+    fondo.lineTo(px(c.x), py(c.z));
     fondo.closePath();
     fondo.fill();
-  });
-  const meta = proyectar(puertas.at(-1));
-  fondo.fillStyle = '#fff';
-  fondo.fillRect(meta.x - 2, meta.y - 2, 4, 4);
+    fondo.stroke();
+  }
   return {
-    pintar(jugadores) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(base, 0, 0);
-      jugadores.forEach((j) => {
-        const control = proyectar(puertas[j.carrera.control]);
-        ctx.strokeStyle = j.color;
-        ctx.lineWidth = 1.5;
+    pintar(ctx, piloto, jugadores) {
+      const ancho = ctx.canvas.width, mitad = ancho / 2, zoom = ancho / 130;
+      ctx.clearRect(0, 0, ancho, ancho);
+      ctx.save();
+      ctx.translate(mitad, mitad);
+      ctx.rotate(piloto.estado.rumbo);
+      ctx.scale(zoom, zoom);
+      const { x, z } = piloto.estado;
+      ctx.drawImage(base, -px(x) / escala, -py(z) / escala, base.width / escala, base.height / escala);
+      const puerta = puertas[piloto.carrera.control];
+      ctx.beginPath();
+      ctx.arc(puerta.x - x, puerta.z - z, 2.6, 0, Math.PI * 2);
+      ctx.lineWidth = 1.3;
+      ctx.strokeStyle = '#ffe244';
+      ctx.stroke();
+      for (const j of jugadores) {
+        if (j === piloto) continue;
         ctx.beginPath();
-        ctx.arc(control.x, control.y, 4, 0, Math.PI * 2);
-        ctx.stroke();
-        const p = proyectar(j.estado);
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(-j.estado.rumbo);
+        ctx.arc(j.estado.x - x, j.estado.z - z, 2.5, 0, Math.PI * 2);
         ctx.fillStyle = j.color;
-        ctx.beginPath();
-        ctx.moveTo(0, -5);
-        ctx.lineTo(4, 4);
-        ctx.lineTo(-4, 4);
-        ctx.closePath();
         ctx.fill();
-        ctx.restore();
-      });
+        ctx.lineWidth = .8;
+        ctx.strokeStyle = '#091b29';
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.save();
+      ctx.translate(mitad, mitad);
+      ctx.beginPath();
+      ctx.moveTo(0, -14);
+      ctx.lineTo(10, 10);
+      ctx.lineTo(0, 6);
+      ctx.lineTo(-10, 10);
+      ctx.closePath();
+      ctx.fillStyle = '#fff';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#102335';
+      ctx.stroke();
+      ctx.fill();
+      ctx.restore();
     },
   };
 }
