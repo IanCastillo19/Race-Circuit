@@ -1,5 +1,4 @@
 // Lógica sin DOM ni WebGL: facilita ajustar y comprobar la conducción.
-
 export function acercar(valor, objetivo, paso) {
   return valor < objetivo ? Math.min(valor + paso, objetivo) : Math.max(valor - paso, objetivo);
 }

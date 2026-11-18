@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { crearFisica } from './fisica.js';
 import { CONFIG } from './config.js';
-import { crearEstado, avanzarConLimite, conduccionEnTerreno } from './movimiento.js';
+import { crearEstado, conduccionEnTerreno } from './movimiento.js';
 import { crearVehiculo } from './vehiculo.js';
 import { cargarConjuntoCoche, clonarConjuntoCoche } from './modelos.js';
 import { crearDetectorTerreno } from './terreno.js';
@@ -25,7 +26,6 @@ import { crearZonasNitro } from './nitro-modelos.js';
 import { AJUSTES } from './ajustes-juego.js';
 import {
   circuloContraCoche,
-  separacionCoches,
   resolverGanador,
   dividirPantallas,
 } from './colisiones.js';
@@ -86,7 +86,8 @@ const escena = new THREE.Scene();
 escena.background = new THREE.Color('#07111e');
 const inspeccionCamara = new THREE.PerspectiveCamera(65, 1, 0.05, 2500);
 inspeccionCamara.position.set(0, 80, 90);
-let renderer,
+let fisica,
+  renderer,
   orbit,
   circuito,
   baseCoche,
@@ -219,12 +220,14 @@ function colocar(j, pose) {
   j.distanciaFrame = 0;
   j.derrape = 0;
   const y = terreno.alturaEn(pose.x, pose.z);
+  fisica.colocar(j, pose, (y ?? 0) + 0.015);
   j.vehiculo.actor.position.set(pose.x, (y ?? 0) + 0.015, pose.z);
   j.vehiculo.actor.rotation.y = pose.rumbo;
   reiniciarNitro(j.nitro, j.estado);
 }
 function liberarJugadores() {
   for (const j of jugadores) {
+    fisica.quitarCoche(j);
     escena.remove(j.vehiculo.actor, j.sombra);
     j.sombra.geometry.dispose();
     j.sombra.material.dispose();
@@ -283,6 +286,7 @@ function prepararJugadores() {
       nitro: crearNitro(nitroVisual.zonas),
       carrera: crearCarrera(puertas, TRAZADO.vueltas, 0),
       puntos: vehiculo.ruedas.map((r) => ({ x: r.centro.x, z: r.centro.z })),
+      penalizacionSalida: 0,
       recuperando: 0,
       fantasma: 0,
       derrape: 0,
@@ -303,6 +307,7 @@ function prepararJugadores() {
       j,
       n === 2 ? (i === 0 ? -1.5 : 1.5) : 0,
     );
+    j.fisica = fisica.crearCoche(j);
     colocar(j, pose);
     j.ultimoPunto = { ...pose };
     jugadores.push(j);
@@ -324,17 +329,22 @@ async function iniciarPartida() {
   orbit.enabled = false;
   acumulador = 0;
   ultimoInstante = undefined;
+  const aceleradoresPulsados = [...teclas].filter(t => t === 'KeyW' || t === 'ArrowUp');
   teclas.clear();
+  for (const t of aceleradoresPulsados) teclas.add(t);
+  $('cuenta-texto').textContent = String(Math.ceil(partida.cuenta));
   segundoCuenta = 0;
   recordAnterior = leerRecord();
   nuevoRecord = false;
   document.querySelector('.resultado-tarjeta').classList.remove('ganador');
   objetos.grupo.visible = opciones.objetos;
+  fisica.activarObjetos(opciones.objetos);
   objetos.reiniciar();
   compartidas = nitroVisual.zonas.map((p) => ({ ...p, recarga: 0 }));
   nitroVisual.actualizar({ zonas: compartidas });
   ambiente.cambiar(opciones.ambiente);
   prepararJugadores();
+  for (const t of aceleradoresPulsados) comprobarSalida(t);
   renderer.setPixelRatio(
     Math.min(devicePixelRatio, { baja: 1, media: 1.5, alta: 2 }[opciones.calidad]),
   );
@@ -401,12 +411,19 @@ function verCircuito() {
 function recuperar(id) {
   if (partida.fase !== 'corriendo') return;
   const j = jugadores.find((p) => p.id === id);
-  if (!j || j.recuperando > 0) return;
+  if (!j || j.recuperando > 0 || j.penalizacionSalida > 0) return;
   const pose = buscarPosicion(j.ultimoPunto, j, jugadores.length === 2 ? (id === 1 ? -1 : 1) : 0);
   colocar(j, pose);
   j.recuperando = AJUSTES.recuperacionSegundos;
   j.fantasma = AJUSTES.inmunidadRecuperacion;
   audio.efecto('recuperar');
+}
+
+function comprobarSalida(codigo) {
+  if (partida.fase !== 'cuenta' || Math.ceil(partida.cuenta) <= 1) return;
+  const j = codigo === 'KeyW' ? jugadores[0]
+    : codigo === 'ArrowUp' ? jugadores[jugadores.length - 1] : null;
+  if (j) j.penalizacionSalida = AJUSTES.penalizacionSalidaSegundos;
 }
 
 function entradaJugador(j) {
@@ -448,41 +465,22 @@ function paso(dt) {
     j.recuperando = Math.max(0, j.recuperando - dt);
     j.derrape = Math.max(0, j.derrape - dt);
     j.cesped = terreno.porcentajeCesped(j.estado, j.puntos);
-    if (j.recuperando > 0) {
-      j.estado.velocidad = 0;
-      actualizarNitro(j.nitro, j.estado, { ...j.estado, avance: 0 }, dt, () => false, compartidas);
-      continue;
-    }
-    const mejorada = ajustarConduccion(CONFIG.conduccion, j.estado.velocidad, j.nitro),
-      ajustes = conduccionEnTerreno(mejorada, CONFIG.cesped, j.cesped);
+    const mejorada = ajustarConduccion(CONFIG.conduccion, j.estado.velocidad, j.nitro);
+    const ajustes = conduccionEnTerreno(mejorada, CONFIG.cesped, j.cesped);
     j.limiteHud = j.estado.velocidad < 0 ? ajustes.velocidadMarchaAtras : ajustes.velocidadMaxima;
-    let roca = false;
-    const movimiento = avanzarConLimite(
-      j.estado,
-      entradaJugador(j),
-      dt,
-      ajustes,
-      j.vehiculo.distanciaEjes,
-      (e) => {
-        if (CONFIG.limites.activo && !limite.contiene(e.x, e.z, e.rumbo, j.vehiculo.huella))
-          return false;
-        if (
-          opciones.objetos &&
-          objetos.rocas.some((r) => circuloContraCoche(e, j.vehiculo.huella, r))
-        ) {
-          roca = true;
-          return false;
-        }
-        return true;
-      },
-      CONFIG.limites.pasoMaximo,
-    );
-    j.avance = movimiento.distancia;
+    const inmovil = j.recuperando > 0 || j.penalizacionSalida > 0;
+    fisica.conducir(j, entradaJugador(j), ajustes, (terreno.alturaEn(j.estado.x, j.estado.z) ?? 0) + .015, inmovil);
+    j.penalizacionSalida = Math.max(0, j.penalizacionSalida - dt);
+  }
+  fisica.paso((a, b) => {
+    if (a?.golpe || b?.golpe) return;
+    audio.efecto('golpe');
+    if (a) a.golpe = .6;
+    if (b) b.golpe = .6;
+  });
+  for (const j of jugadores) {
+    j.avance = fisica.leer(j, CONFIG.limites.activo ? limite : null, terreno);
     j.distanciaFrame += j.avance;
-    if (roca && j.golpe === 0) {
-      j.golpe = 0.7;
-      audio.efecto('golpe');
-    }
     if (
       actualizarNitro(
         j.nitro,
@@ -495,9 +493,7 @@ function paso(dt) {
     )
       audio.efecto('nitro');
     if (opciones.objetos && j.fantasma === 0 && j.derrape === 0) {
-      const b = objetos.platanos.find(
-        (p) => p.recarga === 0 && circuloContraCoche(j.estado, j.vehiculo.huella, p),
-      );
+      const b = fisica.platanoEn(j);
       if (b) {
         b.recarga = AJUSTES.recargaPlatano;
         b.modelo.visible = false;
@@ -505,24 +501,6 @@ function paso(dt) {
         j.estado.velocidad *= 0.45;
         j.nitro.restante = 0;
         audio.efecto('platano');
-      }
-    }
-  }
-  if (jugadores.length === 2) {
-    const [a, b] = jugadores;
-    if (a.fantasma === 0 && b.fantasma === 0) {
-      const v = separacionCoches(a.estado, a.vehiculo.huella, b.estado, b.vehiculo.huella);
-      if (v) {
-        const pa = { ...a.estado, x: a.estado.x - v.x, z: a.estado.z - v.z },
-          pb = { ...b.estado, x: b.estado.x + v.x, z: b.estado.z + v.z };
-        if (apta(pa, a.vehiculo.huella)) Object.assign(a.estado, pa);
-        else Object.assign(a.estado, a.anterior);
-        if (apta(pb, b.vehiculo.huella)) Object.assign(b.estado, pb);
-        else Object.assign(b.estado, b.anterior);
-        a.estado.velocidad *= 0.6;
-        b.estado.velocidad *= 0.6;
-        if (a.golpe === 0 && b.golpe === 0) audio.efecto('golpe');
-        a.golpe = b.golpe = 0.6;
       }
     }
   }
@@ -783,6 +761,7 @@ function enlazar() {
     )
       e.preventDefault();
     teclas.add(e.code);
+    comprobarSalida(e.code);
     if (e.repeat) return;
     if (e.code === 'KeyP' || e.code === 'Escape') alternarPausa();
     if (e.code === 'Space') {
@@ -865,9 +844,11 @@ async function inicializar() {
       resultados = await Promise.all([
         loader.loadAsync(CONFIG.modelos.circuito),
         cargarConjuntoCoche(loader, CONFIG.modelos, CONFIG.coche),
+        crearFisica(AJUSTES.pasoFisica),
       ]);
     circuito = resultados[0].scene;
     baseCoche = resultados[1];
+    fisica = resultados[2];
     circuito.scale.multiplyScalar(CONFIG.circuito.escala);
     circuito.rotation.y += (CONFIG.circuito.giroGrados * Math.PI) / 180;
     circuito.position.add(new THREE.Vector3(...CONFIG.circuito.posicion));
@@ -880,6 +861,7 @@ async function inicializar() {
     ambiente = crearAmbiente(escena, circuito);
     nitroVisual = await crearZonasNitro(loader, circuito, terreno, escena, MEJORAS);
     objetos = await crearObjetos(loader, circuito, terreno, escena, AJUSTES);
+    fisica.instalarObjetos(objetos, terreno);
     diagnosticos.push(...nitroVisual.avisos, ...objetos.avisos);
     compartidas = nitroVisual.zonas.map((p) => ({ ...p, recarga: 0 }));
     senales = crearSenales(puertas, terreno, escena);
@@ -950,6 +932,14 @@ if (modoTest)
     continuar,
     recuperar,
     menu: volverMenu,
+    sincronizarPrueba() {
+      for (const j of jugadores) {
+        const p = j.fisica.cuerpo.translation(), q = j.fisica.cuerpo.rotation();
+        if (Math.hypot(p.x - j.estado.x, p.z - j.estado.z) > .0001 ||
+            Math.abs(Math.sin((2 * Math.atan2(q.y, q.w) - j.estado.rumbo) / 2)) > .0001)
+          fisica.colocar(j, j.estado, (terreno.alturaEn(j.estado.x, j.estado.z) ?? 0) + .015);
+      }
+    },
     detenerRAF() {
       renderer.setAnimationLoop(null);
     },
@@ -958,6 +948,7 @@ if (modoTest)
       dibujar();
     },
     simular(segundos) {
+      this.sincronizarPrueba();
       const n = Math.round(segundos * 120);
       for (let i = 0; i < n; i++) cuadro(1 / 120);
       dibujar();

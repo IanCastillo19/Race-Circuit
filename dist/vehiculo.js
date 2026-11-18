@@ -189,6 +189,7 @@ export function crearVehiculo(modelo, config, ejes = {}) {
     avisos,
     distanciaEjes,
     huella: {
+      semialto: caja.getSize(new THREE.Vector3()).y / 2,
       semiancho: caja.getSize(new THREE.Vector3()).x / 2,
       semilargo: caja.getSize(new THREE.Vector3()).z / 2,
     },
