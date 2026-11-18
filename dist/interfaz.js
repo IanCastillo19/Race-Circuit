@@ -4,6 +4,10 @@ import { formatearTiempo } from './carrera.js';
 
 export const TEXTOS = {
   es: {
+    omitido: 'Te has saltado un checkpoint',
+    volverAsfalto: 'Vuelve al asfalto',
+    golpeRoca: 'Golpe con una roca',
+
     tresVueltas: 'TRES VUELTAS.',
     aFondo: 'A FONDO.',
     intro: 'Turbos, obstáculos y curvas. Mejora tu marca o reta a alguien a tu lado.',
@@ -18,10 +22,6 @@ export const TEXTOS = {
     costa: 'Costa',
     neon: 'Neón',
     alpino: 'Alpino',
-    calidad: 'Calidad',
-    baja: 'Baja',
-    media: 'Media',
-    alta: 'Alta',
     mismoCircuito: 'El circuito prototipo, con tres ambientes visuales.',
     obstaculos: 'Rocas y plátanos',
     sonido: 'Sonido',
@@ -77,6 +77,10 @@ export const TEXTOS = {
     noSonido: 'El sonido no está disponible en este navegador.',
   },
   ca: {
+    omitido: 'T’has saltat un control',
+    volverAsfalto: 'Torna a l’asfalt',
+    golpeRoca: 'Cop amb una roca',
+
     tresVueltas: 'TRES VOLTES.',
     aFondo: 'A FONS.',
     intro: 'Turbos, obstacles i revolts. Millora la teva marca o desafia algú al teu costat.',
@@ -91,10 +95,6 @@ export const TEXTOS = {
     costa: 'Costa',
     neon: 'Neó',
     alpino: 'Alpí',
-    calidad: 'Qualitat',
-    baja: 'Baixa',
-    media: 'Mitjana',
-    alta: 'Alta',
     mismoCircuito: 'El circuit prototip, amb tres ambients visuals.',
     obstaculos: 'Roques i plàtans',
     sonido: 'So',
@@ -150,6 +150,10 @@ export const TEXTOS = {
     noSonido: 'El so no està disponible en aquest navegador.',
   },
   en: {
+    omitido: 'Checkpoint missed',
+    volverAsfalto: 'Return to the road',
+    golpeRoca: 'Rock hit',
+
     tresVueltas: 'THREE LAPS.',
     aFondo: 'FULL THROTTLE.',
     intro: 'Boost pads, obstacles and corners. Beat your best or challenge someone beside you.',
@@ -164,10 +168,6 @@ export const TEXTOS = {
     costa: 'Coast',
     neon: 'Neon',
     alpino: 'Alpine',
-    calidad: 'Quality',
-    baja: 'Low',
-    media: 'Medium',
-    alta: 'High',
     mismoCircuito: 'The prototype track, with three visual atmospheres.',
     obstaculos: 'Rocks and bananas',
     sonido: 'Sound',
@@ -327,7 +327,7 @@ export function crearInterfaz() {
             <span class="dial-auto">AUTO <b data-ref="marcha">N</b></span></div>
         </div>
         <div class="hud-efecto"><span data-ref="efecto"></span><div class="barra-nitro"><span data-ref="nitro"></span></div></div></div>
-        <button class="recolocar" data-jugador="${j.id}" type="button"><kbd>${i ? '↵' : 'F'}</kbd> <span data-i18n="recolocar"></span></button>
+        <button class="recolocar" data-ref="recolocar" data-jugador="${j.id}" type="button"><kbd>${i ? '↵' : 'F'}</kbd> <span data-i18n="recolocar"></span></button>
         <p class="hud-aviso" data-ref="aviso" hidden></p>`;
       const p = pantallas[i];
       Object.assign(h.style, {
@@ -380,10 +380,15 @@ export function crearInterfaz() {
       );
       r.nitro.style.width =
         Math.min(100, (j.nitro.restante / Math.max(0.001, j.nitro.config.duracion)) * 100) + '%';
-      const aviso = j.penalizacionSalida > 0
+      r.recolocar.classList.toggle('control-pendiente', c.controlOmitido);
+      const aviso = j.aturdimiento > 0
+        ? t.golpeRoca + ' · ' + j.aturdimiento.toFixed(1) + ' s'
+        : j.penalizacionSalida > 0
         ? t.salidaAnticipada + ' · ' + j.penalizacionSalida.toFixed(1) + ' s'
         : j.recuperando > 0
           ? t.recuperando + ' ' + j.recuperando.toFixed(1) + ' s'
+          : c.controlOmitido ? t.omitido
+          : j.cesped >= .5 ? t.volverAsfalto
           : j.derrape > 0
             ? t.derrape
             : j.malSentido

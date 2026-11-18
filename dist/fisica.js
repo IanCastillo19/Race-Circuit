@@ -14,6 +14,7 @@ export async function crearFisica(dt) {
   mundo.timestep = dt;
   const cola = new RAPIER.EventQueue(true);
   const sensores = new Map();
+  const rocas = new Map();
   const jugadoresPorCollider = new Map();
   const obstaculos = [];
 
@@ -22,12 +23,13 @@ export async function crearFisica(dt) {
       const sensor = objetos.platanos.includes(p);
       const y = terreno.alturaEn(p.x, p.z) ?? 0;
       const desc = RAPIER.ColliderDesc.cylinder(p.radio, p.radio)
-        .setTranslation(p.x, y + p.radio, p.z).setSensor(sensor)
+        .setTranslation(p.x, y + p.radio, p.z).setSensor(true)
         .setFriction(0.45).setRestitution(0.03)
         .setCollisionGroups(grupos(sensor ? PLATANO : ROCA, COCHE));
       const col = mundo.createCollider(desc);
       obstaculos.push(col);
       if (sensor) sensores.set(col.handle, p);
+      else rocas.set(col.handle, { objeto: p, collider: col });
     }
   }
   function crearCoche(j) {
@@ -37,7 +39,7 @@ export async function crearFisica(dt) {
       .setCcdEnabled(true));
     const caja = mundo.createCollider(RAPIER.ColliderDesc.cuboid(h.semiancho, h.semialto, h.semilargo)
       .setTranslation(0, h.semialto, 0).setMass(1000).setContactSkin(.012)
-      .setFriction(0.45).setRestitution(0.08)
+      .setFriction(0.45).setRestitution(0.46)
       .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS)
       .setCollisionGroups(grupos(COCHE, COCHE | ROCA | PLATANO)), cuerpo);
     jugadoresPorCollider.set(caja.handle, j);
@@ -55,7 +57,7 @@ export async function crearFisica(dt) {
     const f = j.fisica, b = f.cuerpo, e = j.estado;
     const fantasma = j.fantasma > 0;
     if (fantasma !== f.fantasma) {
-      f.caja.setCollisionGroups(grupos(COCHE, ROCA | (fantasma ? 0 : COCHE | PLATANO)));
+      f.caja.setCollisionGroups(grupos(COCHE, fantasma ? 0 : COCHE | ROCA | PLATANO));
       f.fantasma = fantasma;
     }
     if (inmovil !== f.inmovil) {
@@ -102,12 +104,21 @@ export async function crearFisica(dt) {
       jugadoresPorCollider.delete(j.fisica.caja.handle);
       mundo.removeRigidBody(j.fisica.cuerpo);
     },
-    paso(alGolpe) {
+    paso(alGolpe, alTocarRoca) {
       mundo.step(cola);
       cola.drainCollisionEvents((a, b, inicio) => {
         if (!inicio || sensores.has(a) || sensores.has(b)) return;
         const ja = jugadoresPorCollider.get(a), jb = jugadoresPorCollider.get(b);
-        if (ja || jb) alGolpe(ja, jb);
+        const roca = rocas.get(a) ?? rocas.get(b);
+        if (roca) {
+          if (!roca.objeto.modelo.visible) return;
+          roca.objeto.modelo.visible = false;
+          roca.collider.setEnabled(false);
+          const j = ja ?? jb;
+          j.fisica.cuerpo.setLinvel(cero, true);
+          j.fisica.cuerpo.setAngvel(cero, true);
+          alTocarRoca(j);
+        } else if (ja && jb) alGolpe(ja, jb);
       });
     },
     platanoEn(j) {

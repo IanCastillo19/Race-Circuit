@@ -39,7 +39,9 @@ export function crearCarrera(puertas, vueltas = 3, cuentaAtras = 3) {
     fase: 'espera',
     tiempo: 0,
     control: 0,
+    controlOmitido: false,
     vueltasCompletadas: 0,
+    salioDeParrilla: false,
     tiemposVuelta: [],
     inicioVuelta: 0,
   };
@@ -52,7 +54,7 @@ export function iniciarCarrera(carrera) {
 
 // Devuelve la fracción del segmento en la que se cruza la puerta hacia delante.
 // El segmento evita saltarse controles a alta velocidad entre dos fotogramas.
-export function crucePuerta(a, b, puerta) {
+export function crucePuerta(a, b, puerta, margen = 0) {
   const da = (a.x - puerta.x) * puerta.nx + (a.z - puerta.z) * puerta.nz;
   const db = (b.x - puerta.x) * puerta.nx + (b.z - puerta.z) * puerta.nz;
   if (!(da < 0 && db >= 0)) return null;
@@ -60,7 +62,7 @@ export function crucePuerta(a, b, puerta) {
   const x = a.x + (b.x - a.x) * t,
     z = a.z + (b.z - a.z) * t;
   const lateral = (x - puerta.x) * -puerta.nz + (z - puerta.z) * puerta.nx;
-  return Math.abs(lateral) <= puerta.ancho / 2 ? { t, x, z } : null;
+  return Math.abs(lateral) <= puerta.ancho / 2 + margen ? { t, x, z } : null;
 }
 
 export function actualizarCarrera(carrera, anterior, actual, dt, enAsfalto = () => true) {
@@ -76,12 +78,26 @@ export function actualizarCarrera(carrera, anterior, actual, dt, enAsfalto = () 
   // avance es la distancia con signo del fotograma: permite validar un cruce
   // realizado al frenar aunque la velocidad final ya sea cero.
   if (!((actual.avance ?? actual.velocidad) > 0)) return false;
+  // Cruzar junto a la puerta por fuera del arco también explica al piloto qué falta.
+  const esperada = carrera.puertas[carrera.control];
+  const cercana = crucePuerta(anterior, actual, esperada, 8);
+  if (cercana && (!crucePuerta(anterior, actual, esperada) || !enAsfalto(cercana.x, cercana.z)))
+    carrera.controlOmitido = true;
   const cruces = carrera.puertas
     .map((p, i) => ({ i, cruce: crucePuerta(anterior, actual, p) }))
     .filter((p) => p.cruce)
     .sort((a, b) => a.cruce.t - b.cruce.t);
   for (const { i, cruce } of cruces) {
-    if (i !== carrera.control || !enAsfalto(cruce.x, cruce.z)) continue;
+    if (i !== carrera.control) {
+      // La meta está delante de la parrilla y es la puerta anterior al control 1.
+      const anteriorValida = (carrera.control + carrera.puertas.length - 1) % carrera.puertas.length;
+      if (i !== anteriorValida || (i === carrera.puertas.length - 1 && carrera.salioDeParrilla))
+        carrera.controlOmitido = true;
+      if (i === carrera.puertas.length - 1) carrera.salioDeParrilla = true;
+      continue;
+    }
+    if (!enAsfalto(cruce.x, cruce.z)) continue;
+    carrera.controlOmitido = false;
     carrera.control++;
     if (carrera.control === carrera.puertas.length) {
       const tiempoCruce = inicio + dt * cruce.t;

@@ -1,5 +1,6 @@
 export const AJUSTES = {
   pasoFisica: 1 / 120,
+  aturdimientoRocaSegundos: 1.5,
   penalizacionSalidaSegundos: 1,
   recuperacionSegundos: 2,
   inmunidadRecuperacion: 3,
