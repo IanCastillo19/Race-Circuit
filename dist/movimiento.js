@@ -1,3 +1,4 @@
+import { crearCambio, actualizarCambio } from './marchas.js';
 // Lógica sin DOM ni WebGL: facilita ajustar y comprobar la conducción.
 export function acercar(valor, objetivo, paso) {
   return valor < objetivo ? Math.min(valor + paso, objetivo) : Math.max(valor - paso, objetivo);
@@ -9,6 +10,7 @@ export function crearEstado(posicion = [0, 0, 0], rumboGrados = 0) {
     z: posicion[2],
     rumbo: (rumboGrados * Math.PI) / 180,
     velocidad: 0,
+    cambio: crearCambio(),
     direccion: 0,
   };
 }
@@ -34,8 +36,9 @@ export function conduccionEnTerreno(base, cesped, proporcion) {
 export function avanzar(estado, teclas, dt, ajustes, distanciaEjes) {
   if (!(dt > 0)) return 0;
   dt = Math.min(dt, 0.05); // Evita saltos al volver a una pestaña suspendida.
+  ajustes = actualizarCambio(estado, dt, ajustes);
   const velocidadAnterior = estado.velocidad;
-  const acelerar = teclas.has('KeyW');
+  const acelerar = teclas.has('KeyW') && !estado.cambio.calado;
   const frenar = teclas.has('KeyS');
   const frenadaExceso = ajustes.frenadaExceso ?? ajustes.frenada;
 
@@ -50,7 +53,7 @@ export function avanzar(estado, teclas, dt, ajustes, distanciaEjes) {
     estado.velocidad =
       estado.velocidad > 0
         ? acercar(estado.velocidad, 0, ajustes.frenada * dt)
-        : estado.velocidad < -ajustes.velocidadMarchaAtras
+        : estado.cambio.calado ? acercar(estado.velocidad, 0, ajustes.desaceleracion * dt) : estado.velocidad < -ajustes.velocidadMarchaAtras
           ? acercar(estado.velocidad, -ajustes.velocidadMarchaAtras, frenadaExceso * dt)
           : Math.max(
               -ajustes.velocidadMarchaAtras,
@@ -59,6 +62,10 @@ export function avanzar(estado, teclas, dt, ajustes, distanciaEjes) {
   } else {
     estado.velocidad = acercar(estado.velocidad, 0, ajustes.desaceleracion * dt);
   }
+
+  // La reducción frena progresivamente incluso sin pisar el acelerador.
+  if (estado.velocidad > ajustes.velocidadMaxima)
+    estado.velocidad = Math.max(ajustes.velocidadMaxima, Math.min(estado.velocidad, velocidadAnterior - ajustes.frenadaExceso * dt));
 
   const lado = Number(teclas.has('KeyA')) - Number(teclas.has('KeyD'));
   const objetivo = (lado * ajustes.giroMaximoGrados * Math.PI) / 180;

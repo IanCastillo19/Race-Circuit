@@ -46,7 +46,7 @@ export const CONFIG = {
     rumboGrados: 0, // Orientación inicial del jugador, independiente del GLB.
   },
   conduccion: {
-    velocidadMaxima: 25, // m/s: 90 km/h.
+    velocidadMaxima: 120 / 3.6, // m/s: 120 km/h en sexta.
     velocidadMarchaAtras: 5,
     aceleracion: 3,
     aceleracionMarchaAtras: 4,

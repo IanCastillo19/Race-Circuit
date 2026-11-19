@@ -49,9 +49,9 @@ export function resolverGanador(jugadores) {
     return 'empate';
   return final[0].id;
 }
-export function dividirPantallas(ancho, alto, numero) {
+export function dividirPantallas(ancho, alto, numero, division) {
   if (numero === 1) return [{ x: 0, y: 0, w: ancho, h: alto, top: 0, left: 0 }];
-  if (ancho >= 850) {
+  if (division === 'vertical') {
     const w = Math.floor(ancho / 2);
     return [
       { x: 0, y: 0, w, h: alto, top: 0, left: 0 },

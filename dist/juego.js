@@ -1,3 +1,4 @@
+import { cambiarMarcha } from './marchas.js';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -42,11 +43,13 @@ const parametros = new URLSearchParams(location.search),
   modoTest = parametros.has('test');
 const permitidos = {
   modo: ['1', '2'],
+  division: ['vertical', 'horizontal'],
   ambiente: ['costa', 'neon', 'alpino'],
   idioma: ['es', 'ca', 'en'],
 };
 let opciones = {
   modo: '1',
+  division: window.innerWidth >= 850 ? 'vertical' : 'horizontal',
   ambiente: 'costa',
   objetos: true,
   sonido: false,
@@ -77,6 +80,7 @@ for (const k of Object.keys(opciones)) {
   if (typeof opciones[k] === 'boolean') $(k).checked = opciones[k];
   else $(k).querySelector(`input[value="${opciones[k]}"]`).checked = true;
 }
+$('division').hidden = opciones.modo !== '2';
 ui.traducir(opciones.idioma);
 $('pantalla-menu').dataset.ambiente = opciones.ambiente;
 
@@ -133,7 +137,7 @@ function leerOpciones() {
 }
 function claveRecord() {
   return (
-    'race-circuit-record:arcade-v2:solo:' +
+    'race-circuit-record:manual-v1:solo:' +
     TRAZADO.id +
     ':' +
     TRAZADO.vueltas +
@@ -152,7 +156,7 @@ function pintarMarcaMenu() {
   const e = $('marca-menu');
   e.hidden = $('modo').querySelector(':checked').value !== '1';
   const clave =
-    'race-circuit-record:arcade-v2:solo:' +
+    'race-circuit-record:manual-v1:solo:' +
     TRAZADO.id +
     ':' +
     TRAZADO.vueltas +
@@ -615,12 +619,17 @@ function redimensionar() {
   ancho = Math.max(1, $('escena').clientWidth);
   alto = Math.max(1, $('escena').clientHeight);
   if (renderer) renderer.setSize(ancho, alto, false);
-  pantallas = dividirPantallas(ancho, alto, jugadores.length || 1);
+  pantallas = dividirPantallas(ancho, alto, jugadores.length || 1, opciones.division);
   ui.crearHuds(jugadores, pantallas, minimapa);
   document.body.classList.toggle('dos-jugadores', jugadores.length === 2);
   const separador = $('separador');
-  separador.style.cssText =
-    ancho >= 850 ? 'left:50%;top:0;width:2px;height:100%' : 'left:0;top:50%;width:100%;height:2px';
+  document.body.dataset.division = opciones.division;
+  if (pantallas.length === 2) {
+    const segunda = pantallas[1];
+    separador.style.cssText = opciones.division === 'vertical'
+      ? `left:${segunda.left - 1}px;top:0;width:2px;height:100%`
+      : `left:0;top:${segunda.top - 1}px;width:100%;height:2px`;
+  }
   inspeccionCamara.aspect = ancho / alto;
   inspeccionCamara.updateProjectionMatrix();
   ui.pintar(jugadores);
@@ -734,6 +743,7 @@ function enlazar() {
   });
   $('pantalla-menu').addEventListener('change', (e) => {
     leerOpciones();
+    $('division').hidden = opciones.modo !== '2';
     $('pantalla-menu').dataset.ambiente = opciones.ambiente;
     if (e.target.name === 'idioma') {
       ui.traducir(opciones.idioma);
@@ -768,6 +778,10 @@ function enlazar() {
     teclas.add(e.code);
     comprobarSalida(e.code);
     if (e.repeat) return;
+    if (partida.fase === 'corriendo') {
+      const comando = { KeyQ: [0, -1], KeyE: [0, 1], KeyK: [1, -1], KeyL: [1, 1] }[e.code];
+      if (comando && jugadores[comando[0]] && cambiarMarcha(jugadores[comando[0]].estado, comando[1])) audio.efecto('marcha');
+    }
     if (e.code === 'KeyP' || e.code === 'Escape') alternarPausa();
     if (e.code === 'Space') {
       if (partida.fase === 'menu' || partida.fase === 'resultado') iniciarPartida();
