@@ -1,3 +1,4 @@
+import { cambiarMarcha, limiteMarcha } from './marchas.js';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -42,11 +43,13 @@ const parametros = new URLSearchParams(location.search),
   modoTest = parametros.has('test');
 const permitidos = {
   modo: ['1', '2'],
+  division: ['vertical', 'horizontal'],
   ambiente: ['costa', 'neon', 'alpino'],
   idioma: ['es', 'ca', 'en'],
 };
 let opciones = {
   modo: '1',
+  division: window.innerWidth >= 850 ? 'vertical' : 'horizontal',
   ambiente: 'costa',
   objetos: true,
   sonido: false,
@@ -77,6 +80,7 @@ for (const k of Object.keys(opciones)) {
   if (typeof opciones[k] === 'boolean') $(k).checked = opciones[k];
   else $(k).querySelector(`input[value="${opciones[k]}"]`).checked = true;
 }
+$('division').hidden = opciones.modo !== '2';
 ui.traducir(opciones.idioma);
 $('pantalla-menu').dataset.ambiente = opciones.ambiente;
 
@@ -105,7 +109,8 @@ let listo = false,
   ancho = 1,
   alto = 1,
   acumulador = 0,
-  ultimoInstante;
+  ultimoInstante,
+  iniciando = false;
 let partida = { fase: 'menu', cuenta: 3, previa: 'corriendo', ganador: null, inspeccion: false };
 let compartidas = [],
   diagnosticos = [],
@@ -133,7 +138,7 @@ function leerOpciones() {
 }
 function claveRecord() {
   return (
-    'race-circuit-record:arcade-v2:solo:' +
+    'race-circuit-record:manual-v1:solo:' +
     TRAZADO.id +
     ':' +
     TRAZADO.vueltas +
@@ -152,7 +157,7 @@ function pintarMarcaMenu() {
   const e = $('marca-menu');
   e.hidden = $('modo').querySelector(':checked').value !== '1';
   const clave =
-    'race-circuit-record:arcade-v2:solo:' +
+    'race-circuit-record:manual-v1:solo:' +
     TRAZADO.id +
     ':' +
     TRAZADO.vueltas +
@@ -316,40 +321,54 @@ function prepararJugadores() {
 }
 
 async function iniciarPartida() {
-  if (!listo) return;
-  leerOpciones();
-  partida = {
-    fase: 'cuenta',
-    cuenta: TRAZADO.cuentaAtras,
-    previa: 'corriendo',
-    ganador: null,
-    inspeccion: false,
-  };
-  orbit.enabled = false;
-  acumulador = 0;
-  ultimoInstante = undefined;
-  const aceleradoresPulsados = [...teclas].filter(t => t === 'KeyW' || t === 'ArrowUp');
-  teclas.clear();
-  for (const t of aceleradoresPulsados) teclas.add(t);
-  $('cuenta-texto').textContent = String(Math.ceil(partida.cuenta));
-  segundoCuenta = 0;
-  recordAnterior = leerRecord();
-  nuevoRecord = false;
-  document.querySelector('.resultado-tarjeta').classList.remove('ganador');
-  objetos.grupo.visible = opciones.objetos;
-  fisica.activarObjetos(opciones.objetos);
-  objetos.reiniciar();
-  compartidas = nitroVisual.zonas.map((p) => ({ ...p, recarga: 0 }));
-  nitroVisual.actualizar({ zonas: compartidas });
-  ambiente.cambiar(opciones.ambiente);
-  prepararJugadores();
-  for (const t of aceleradoresPulsados) comprobarSalida(t);
-  redimensionar();
-  $('escena').focus({ preventScroll: true });
-  if (opciones.sonido && !(await audio.activar(true))) mensaje(ui.t.noSonido);
-  else if (!opciones.sonido) audio.activar(false);
-  if (partida.cuenta <= 0) salida();
-  pintarPantallas();
+  if (!listo || iniciando) return;
+  iniciando = true;
+  for (const id of ['empezar', 'revancha', 'reiniciar']) $(id).disabled = true;
+  try {
+    leerOpciones();
+    partida = {
+      fase: 'cuenta',
+      cuenta: TRAZADO.cuentaAtras,
+      previa: 'corriendo',
+      ganador: null,
+      inspeccion: false,
+    };
+    orbit.enabled = false;
+    acumulador = 0;
+    ultimoInstante = undefined;
+    const aceleradoresPulsados = [...teclas].filter(t => t === 'KeyW' || t === 'ArrowUp');
+    teclas.clear();
+    for (const t of aceleradoresPulsados) teclas.add(t);
+    $('cuenta-texto').textContent = String(Math.ceil(partida.cuenta));
+    segundoCuenta = 0;
+    recordAnterior = leerRecord();
+    nuevoRecord = false;
+    document.querySelector('.resultado-tarjeta').classList.remove('ganador');
+    objetos.grupo.visible = opciones.objetos;
+    fisica.activarObjetos(opciones.objetos);
+    objetos.reiniciar();
+    compartidas = nitroVisual.zonas.map((p) => ({ ...p, recarga: 0 }));
+    nitroVisual.actualizar({ zonas: compartidas });
+    ambiente.cambiar(opciones.ambiente);
+    prepararJugadores();
+    for (const t of aceleradoresPulsados) comprobarSalida(t);
+    redimensionar();
+    $('escena').focus({ preventScroll: true });
+    if (opciones.sonido && !(await audio.activar(true))) mensaje(ui.t.noSonido);
+    else if (!opciones.sonido) audio.activar(false);
+    if (partida.fase === 'cuenta') {
+      if (partida.cuenta <= 0) salida();
+      pintarPantallas();
+    }
+  } catch (error) {
+    console.error(error);
+    partida.fase = 'menu';
+    mensaje(ui.t.error);
+    pintarPantallas();
+  } finally {
+    iniciando = false;
+    for (const id of ['empezar', 'revancha', 'reiniciar']) $(id).disabled = false;
+  }
 }
 function salida() {
   partida.fase = 'corriendo';
@@ -465,7 +484,9 @@ function paso(dt) {
     j.cesped = terreno.porcentajeCesped(j.estado, j.puntos);
     const mejorada = ajustarConduccion(CONFIG.conduccion, j.estado.velocidad, j.nitro);
     const ajustes = conduccionEnTerreno(mejorada, CONFIG.cesped, j.cesped);
-    j.limiteHud = j.estado.velocidad < 0 ? ajustes.velocidadMarchaAtras : ajustes.velocidadMaxima;
+    j.limiteHud = j.estado.velocidad < 0
+      ? ajustes.velocidadMarchaAtras
+      : limiteMarcha(j.estado, ajustes.velocidadMaxima);
     const inmovil = j.recuperando > 0 || j.penalizacionSalida > 0 || j.aturdimiento > 0;
     j.aturdimiento = Math.max(0, j.aturdimiento - dt);
     fisica.conducir(j, entradaJugador(j), ajustes, (terreno.alturaEn(j.estado.x, j.estado.z) ?? 0) + .015, inmovil);
@@ -600,7 +621,7 @@ function cuadro(delta) {
     }
   }
   if (partida.fase === 'corriendo') {
-    if (delta > 0.25) jugadores.forEach((j) => (j.carrera.tiempo += delta - 0.25));
+    // El crono avanza solo con la física simulada: un tirón de renderizado no penaliza al piloto.
     acumulador += Math.min(delta, 0.25);
     while (acumulador >= AJUSTES.pasoFisica && partida.fase === 'corriendo') {
       paso(AJUSTES.pasoFisica);
@@ -615,12 +636,17 @@ function redimensionar() {
   ancho = Math.max(1, $('escena').clientWidth);
   alto = Math.max(1, $('escena').clientHeight);
   if (renderer) renderer.setSize(ancho, alto, false);
-  pantallas = dividirPantallas(ancho, alto, jugadores.length || 1);
+  pantallas = dividirPantallas(ancho, alto, jugadores.length || 1, opciones.division);
   ui.crearHuds(jugadores, pantallas, minimapa);
   document.body.classList.toggle('dos-jugadores', jugadores.length === 2);
   const separador = $('separador');
-  separador.style.cssText =
-    ancho >= 850 ? 'left:50%;top:0;width:2px;height:100%' : 'left:0;top:50%;width:100%;height:2px';
+  document.body.dataset.division = opciones.division;
+  if (pantallas.length === 2) {
+    const segunda = pantallas[1];
+    separador.style.cssText = opciones.division === 'vertical'
+      ? `left:${segunda.left - 1}px;top:0;width:2px;height:100%`
+      : `left:0;top:${segunda.top - 1}px;width:100%;height:2px`;
+  }
   inspeccionCamara.aspect = ancho / alto;
   inspeccionCamara.updateProjectionMatrix();
   ui.pintar(jugadores);
@@ -734,6 +760,7 @@ function enlazar() {
   });
   $('pantalla-menu').addEventListener('change', (e) => {
     leerOpciones();
+    $('division').hidden = opciones.modo !== '2';
     $('pantalla-menu').dataset.ambiente = opciones.ambiente;
     if (e.target.name === 'idioma') {
       ui.traducir(opciones.idioma);
@@ -768,6 +795,10 @@ function enlazar() {
     teclas.add(e.code);
     comprobarSalida(e.code);
     if (e.repeat) return;
+    if (partida.fase === 'corriendo') {
+      const comando = { KeyQ: [0, -1], KeyE: [0, 1], KeyK: [1, -1], KeyL: [1, 1] }[e.code];
+      if (comando && jugadores[comando[0]] && cambiarMarcha(jugadores[comando[0]].estado, comando[1])) audio.efecto('marcha');
+    }
     if (e.code === 'KeyP' || e.code === 'Escape') alternarPausa();
     if (e.code === 'Space') {
       if (partida.fase === 'menu' || partida.fase === 'resultado') iniciarPartida();

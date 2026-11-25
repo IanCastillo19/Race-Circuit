@@ -35,14 +35,14 @@ export function crearAudio() {
     if (!contexto) return;
     jugadores.forEach((j, i) =>
       motores[i]?.osc.frequency.setTargetAtTime(
-        35 + Math.abs(j.estado.velocidad) * 5 + (j.nitro.restante > 0 ? 25 : 0),
+        35 + j.estado.cambio.rpm * .025,
         contexto.currentTime,
         0.08,
       ),
     );
     motores.forEach((m, i) =>
       m.gain.gain.setTargetAtTime(
-        habilitado && corriendo && jugadores[i] && jugadores[i].estado.velocidad !== 0 ? 0.035 : 0,
+        habilitado && corriendo && jugadores[i] && !jugadores[i].estado.cambio.calado ? 0.035 : 0,
         contexto.currentTime,
         0.06,
       ),
@@ -51,6 +51,7 @@ export function crearAudio() {
   function efecto(tipo) {
     if (!contexto || !habilitado) return;
     const frecuencias = {
+      marcha: 180,
       cuenta: 500,
       salida: 850,
       control: 740,

@@ -4,6 +4,10 @@ import { formatearTiempo } from './carrera.js';
 
 export const TEXTOS = {
   es: {
+    orientacion: 'Orientación de pantalla',
+    horizontal: 'Horizontal',
+    lados: 'Izquierda y derecha',
+    apiladas: 'Arriba y abajo',
     omitido: 'Te has saltado un checkpoint',
     volverAsfalto: 'Vuelve al asfalto',
     golpeRoca: 'Golpe con una roca',
@@ -28,8 +32,8 @@ export const TEXTOS = {
     idioma: 'Idioma',
     cargando: 'Cargando modelos…',
     empezar: 'EMPEZAR CARRERA →',
-    controlesJ1: 'WASD · F para recolocarte',
-    controlesJ2: 'Flechas · Enter para recolocarte',
+    controlesJ1: 'WASD · Q/E −/+ · F para recolocarte',
+    controlesJ2: 'Flechas · K/L −/+ · Enter para recolocarte',
     modelos: 'Modelos y ajustes',
     ajustarInicio:
       'En Ver circuito, Mayús + clic prueba otra salida para J1. Desactiva el récord de esa sesión.',
@@ -77,6 +81,10 @@ export const TEXTOS = {
     noSonido: 'El sonido no está disponible en este navegador.',
   },
   ca: {
+    orientacion: 'Orientació de pantalla',
+    horizontal: 'Horitzontal',
+    lados: 'Esquerra i dreta',
+    apiladas: 'Dalt i baix',
     omitido: 'T’has saltat un control',
     volverAsfalto: 'Torna a l’asfalt',
     golpeRoca: 'Cop amb una roca',
@@ -101,8 +109,8 @@ export const TEXTOS = {
     idioma: 'Idioma',
     cargando: 'Carregant models…',
     empezar: 'COMENÇAR CURSA →',
-    controlesJ1: 'WASD · F per recol·locar-te',
-    controlesJ2: 'Fletxes · Retorn per recol·locar-te',
+    controlesJ1: 'WASD · Q/E −/+ · F per recol·locar-te',
+    controlesJ2: 'Fletxes · K/L −/+ · Retorn per recol·locar-te',
     modelos: 'Models i ajustos',
     ajustarInicio:
       'A Veure circuit, Majúscules + clic prova una altra sortida per a J1. Desactiva el rècord de la sessió.',
@@ -150,6 +158,10 @@ export const TEXTOS = {
     noSonido: 'El so no està disponible en aquest navegador.',
   },
   en: {
+    orientacion: 'Split orientation',
+    horizontal: 'Horizontal',
+    lados: 'Left and right',
+    apiladas: 'Top and bottom',
     omitido: 'Checkpoint missed',
     volverAsfalto: 'Return to the road',
     golpeRoca: 'Rock hit',
@@ -174,8 +186,8 @@ export const TEXTOS = {
     idioma: 'Language',
     cargando: 'Loading models…',
     empezar: 'START RACE →',
-    controlesJ1: 'WASD · F to recover',
-    controlesJ2: 'Arrow keys · Enter to recover',
+    controlesJ1: 'WASD · Q/E −/+ · F to recover',
+    controlesJ2: 'Arrow keys · K/L −/+ · Enter to recover',
     modelos: 'Models and settings',
     ajustarInicio:
       'In Track view, Shift + click tests a different start for P1. Personal best saving is disabled for that session.',
@@ -273,17 +285,6 @@ function ordenarParrilla(jugadores) {
     a.id - b.id);
 }
 
-function marchaAutomatica(velocidad, anterior, maxima) {
-  if (velocidad < -0.06) return 'R';
-  if (velocidad < 0.06) return 'N';
-  const banda = maxima / 5;
-  let marcha = typeof anterior === 'number' ? anterior : 1;
-  // Un pequeño margen al reducir evita que el número oscile al mantener el gas.
-  while (marcha < 6 && velocidad >= banda * marcha) marcha++;
-  while (marcha > 1 && velocidad < banda * (marcha - 1) - banda * 0.12) marcha--;
-  return marcha;
-}
-
 export function crearInterfaz() {
   let idioma = 'es',
     referencias = [];
@@ -324,9 +325,9 @@ export function crearInterfaz() {
         <div class="hud-instrumentos"><div class="dial" data-ref="dial">
           ${esfera(maximo)}
           <div class="dial-lectura"><small>KM/H</small><strong data-ref="velocidad">0</strong>
-            <span class="dial-auto">AUTO <b data-ref="marcha">N</b></span></div>
+            <span class="dial-auto">MAN <b data-ref="marcha">N</b></span></div>
         </div>
-        <div class="hud-efecto"><span data-ref="efecto"></span><div class="barra-nitro"><span data-ref="nitro"></span></div></div></div>
+        <div class="motor-panel"><span data-ref="motor"></span><div class="rpm-barra"><i data-ref="rpm"></i></div></div><div class="hud-efecto"><span data-ref="efecto"></span><div class="barra-nitro"><span data-ref="nitro"></span></div></div></div>
         <button class="recolocar" data-ref="recolocar" data-jugador="${j.id}" type="button"><kbd>${i ? '↵' : 'F'}</kbd> <span data-i18n="recolocar"></span></button>
         <p class="hud-aviso" data-ref="aviso" hidden></p>`;
       const p = pantallas[i];
@@ -359,7 +360,12 @@ export function crearInterfaz() {
       const limite = (j.limiteHud ?? CONFIG.conduccion.velocidadMaxima) * 3.6;
       const fraccion = Math.min(1, kmh / r.maximo);
       poner(r.velocidad, Math.round(kmh));
-      r.ultimaMarcha = marchaAutomatica(j.estado.velocidad, r.ultimaMarcha, CONFIG.conduccion.velocidadMaxima);
+      const cambio = j.estado.cambio;
+      r.ultimaMarcha = j.estado.velocidad < -.06 ? 'R' : cambio.marcha;
+      r.rpm.style.width = Math.min(100, cambio.rpm / 7000 * 100) + '%';
+      r.rpm.style.background = cambio.rpm >= 6200 ? '#ff4242' : 'var(--jugador)';
+      const textosMotor = { es: ['MOTOR CALADO · Baja a 1ª', 'SUBE MARCHA'], ca: ['MOTOR CALAT · Baixa a 1a', 'PUJA MARXA'], en: ['ENGINE STALLED · Shift to 1st', 'SHIFT UP'] }[idioma];
+      poner(r.motor, cambio.calado ? textosMotor[0] : cambio.rpm >= 6200 && cambio.marcha < 6 ? textosMotor[1] : Math.round(cambio.rpm) + ' RPM');
       poner(r.marcha, r.ultimaMarcha);
       r.aguja.setAttribute('transform', `rotate(${angulo(kmh, r.maximo)} 100 100)`);
       r.arco.setAttribute('stroke-dasharray', `${fraccion * 100} 100`);

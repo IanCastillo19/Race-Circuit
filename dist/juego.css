@@ -220,6 +220,7 @@ input:focus-visible {
   border-radius: 9px;
   background: #07182b;
 }
+.segmentos-division { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .segmentos-modo {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
@@ -755,7 +756,7 @@ h1,
 body.dos-jugadores .jugador-hud { --arriba: 36px; }
 @media (max-width: 849px) {
   .jugador-hud { --arriba: 38px; }
-  body.dos-jugadores .jugador-hud + .jugador-hud { --arriba: 10px; }
+  body.dos-jugadores[data-division="horizontal"] .jugador-hud + .jugador-hud { --arriba: 10px; }
 }
 @container (max-height: 280px) {
   .hud-tiempos div { margin: 1px 0; padding-block: 0; }
@@ -766,7 +767,7 @@ body.dos-jugadores .jugador-hud { --arriba: 36px; }
   .hud-aviso { top: 40%; }
 }
 @media (min-width: 600px) and (max-width: 849px) and (max-height: 560px) {
-  body.dos-jugadores .jugador-hud { --arriba: 8px; --margen: 9px; }
+  body.dos-jugadores[data-division="horizontal"] .jugador-hud { --arriba: 8px; --margen: 9px; }
 }
 
 .recolocar.control-pendiente {
@@ -782,3 +783,20 @@ body.dos-jugadores .jugador-hud { --arriba: 36px; }
 @media (prefers-reduced-motion: reduce) {
   .recolocar.control-pendiente { animation: none; outline: 2px solid var(--jugador); }
 }
+
+/* Una división vertical también puede ocupar media pantalla de móvil. */
+@container (max-width: 285px) {
+  .hud-cabecera, .hud-puesto { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .hud-puesto { align-items: flex-end; }
+  .hud-cabecera strong, .hud-puesto strong { font-size: 20px; }
+  .hud-tiempos { width: min(105px, 56cqw); }
+  .hud-navegacion, .hud-instrumentos { bottom: 40px; }
+  .hud-mapa { width: min(66px, 33cqw); }
+  .dial { width: min(82px, 41cqw); }
+  .hud-control, .hud-efecto { padding-inline: 3px; min-width: 0; gap: 2px; }
+  .hud-control i { display: none; }
+}
+
+.motor-panel { width: 100%; max-width: 240px; color: white; text-align: right; font-size: 11px; font-weight: 700; text-shadow: 0 1px 3px #000; }
+.rpm-barra { height: 5px; background: #ffffff30; margin-top: 4px; overflow: hidden; }
+.rpm-barra i { display: block; height: 100%; transition: width .08s linear; }
