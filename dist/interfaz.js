@@ -65,6 +65,9 @@ export const TEXTOS = {
     recuperando: 'Recolocando…',
     sentido: 'Sentido contrario',
     completada: '¡CARRERA COMPLETADA!',
+    finalizado: 'YA HAS FINALIZADO',
+    esperaOtros: 'Espera a que terminen los demás',
+    atajosSinReinicio: 'P / Esc pausa · F / Enter recoloca',
     empate: '¡EMPATE!',
     gana: 'Gana',
     nuevoRecord: '¡Nuevo récord personal!',
@@ -142,6 +145,9 @@ export const TEXTOS = {
     recuperando: 'Recol·locant…',
     sentido: 'Sentit contrari',
     completada: 'CURSA COMPLETADA!',
+    finalizado: 'JA HAS ACABAT',
+    esperaOtros: 'Espera que acabin els altres',
+    atajosSinReinicio: 'P / Esc pausa · F / Retorn recol·loca',
     empate: 'EMPAT!',
     gana: 'Guanya',
     nuevoRecord: 'Nou rècord personal!',
@@ -219,6 +225,9 @@ export const TEXTOS = {
     recuperando: 'Recovering…',
     sentido: 'Wrong way',
     completada: 'RACE COMPLETE!',
+    finalizado: 'YOU HAVE FINISHED',
+    esperaOtros: 'Wait for the others to finish',
+    atajosSinReinicio: 'P / Esc pause · F / Enter recover',
     empate: 'DRAW!',
     gana: 'Winner',
     nuevoRecord: 'New personal best!',
@@ -329,7 +338,11 @@ export function crearInterfaz() {
         </div>
         <div class="motor-panel"><span data-ref="motor"></span><div class="rpm-barra"><i data-ref="rpm"></i></div></div><div class="hud-efecto"><span data-ref="efecto"></span><div class="barra-nitro"><span data-ref="nitro"></span></div></div></div>
         <button class="recolocar" data-ref="recolocar" data-jugador="${j.id}" type="button"><kbd>${i ? '↵' : 'F'}</kbd> <span data-i18n="recolocar"></span></button>
-        <p class="hud-aviso" data-ref="aviso" hidden></p>`;
+        <p class="hud-aviso" data-ref="aviso" hidden></p>
+        <div class="hud-finalizado" data-ref="finalizado" hidden aria-live="polite">
+          <strong data-i18n="finalizado"></strong><span data-ref="tiempoFinal"></span>
+          <small data-i18n="esperaOtros"></small>
+        </div>`;
       const p = pantallas[i];
       Object.assign(h.style, {
         left: p.left + 'px',
@@ -350,6 +363,10 @@ export function crearInterfaz() {
       const r = referencias[i];
       if (!r) return;
       const c = j.carrera;
+      const terminado = c.fase === 'terminada';
+      r.finalizado.hidden = !terminado;
+      r.finalizado.parentElement.classList.toggle('finalizado', terminado);
+      if (terminado) poner(r.tiempoFinal, formatearTiempo(c.tiempo));
       poner(r.vuelta, Math.min(c.vueltasCompletadas + 1, c.vueltas) + '/' + c.vueltas);
       poner(r.posicion, (parrilla.indexOf(j) + 1) + '/' + parrilla.length);
       poner(r.tiempo, formatearTiempo(c.tiempo));
@@ -476,7 +493,7 @@ export function crearMinimapa(circuito, puertas, nombresAsfalto) {
       ctx.strokeStyle = '#ffe244';
       ctx.stroke();
       for (const j of jugadores) {
-        if (j === piloto) continue;
+        if (j === piloto || j.carrera.fase === 'terminada') continue;
         ctx.beginPath();
         ctx.arc(j.estado.x - x, j.estado.z - z, 2.5, 0, Math.PI * 2);
         ctx.fillStyle = j.color;

@@ -40,6 +40,18 @@ export function separacionCoches(a, ha, b, hb) {
   }
   return { x: (normal.x * (menor + 0.015)) / 2, z: (normal.z * (menor + 0.015)) / 2 };
 }
+// Los bots futuros no desbloquean la salida ni los resultados de los jugadores locales.
+export function localesFinalizados(jugadores) {
+  const locales = jugadores.filter((j) => !j.esBot);
+  return locales.length > 0 && locales.every((j) => j.carrera.fase === 'terminada');
+}
+
+export function bloquearSalidaLocal(jugadores, fase) {
+  if (fase === 'menu' || fase === 'resultado') return false;
+  const locales = jugadores.filter((j) => !j.esBot);
+  return locales.length > 1 && !localesFinalizados(jugadores);
+}
+
 export function resolverGanador(jugadores) {
   const final = jugadores
     .filter((j) => j.carrera.fase === 'terminada')

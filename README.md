@@ -29,7 +29,7 @@ En solitario también funcionan las flechas para conducir. `P` o `Esc` pausa; `R
 
 ## Reglas de carrera y récord
 
-La meta solo cuenta después de cruzar todos los checkpoints en orden y en el sentido correcto. En dos jugadores gana el primero que complete la tercera vuelta. En solitario la mejor marca se guarda en este navegador para el circuito actual, separando partidas con obstáculos y sin ellos. Las salidas de prueba elegidas desde «Ver circuito» no guardan récord.
+La meta solo cuenta después de cruzar todos los checkpoints en orden y en el sentido correcto. En dos jugadores gana quien complete primero la tercera vuelta. Su coche desaparece y deja de colisionar, pero el otro sigue corriendo con su propio cronómetro. La pantalla de resultados y sus acciones de repetir o volver al menú se muestran cuando han terminado ambos jugadores locales. Durante una carrera local de dos jugadores, esas acciones permanecen ocultas para no interrumpir al compañero. En solitario la mejor marca se guarda en este navegador para el circuito actual, separando partidas con obstáculos y sin ellos. Las salidas de prueba elegidas desde «Ver circuito» no guardan récord.
 
 El cronómetro avanza con los pasos de física mientras la carrera está activa. Pausa y cambio de pestaña lo detienen. Si un fotograma tarda demasiado, se simulan como máximo 0,25 segundos: el tiempo descartado tampoco se añade al cronómetro, de modo que un bloqueo del navegador no penalice una marca sin avance equivalente.
 

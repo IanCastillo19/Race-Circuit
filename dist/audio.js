@@ -42,7 +42,7 @@ export function crearAudio() {
     );
     motores.forEach((m, i) =>
       m.gain.gain.setTargetAtTime(
-        habilitado && corriendo && jugadores[i] && !jugadores[i].estado.cambio.calado ? 0.035 : 0,
+        habilitado && corriendo && jugadores[i] && jugadores[i].carrera.fase !== 'terminada' && !jugadores[i].estado.cambio.calado ? 0.035 : 0,
         contexto.currentTime,
         0.06,
       ),
