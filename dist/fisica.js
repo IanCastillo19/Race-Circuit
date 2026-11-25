@@ -101,8 +101,11 @@ export async function crearFisica(dt) {
     instalarObjetos, crearCoche, colocar, conducir, leer,
     activarObjetos(activos) { for (const col of obstaculos) col.setEnabled(activos); },
     quitarCoche(j) {
-      jugadoresPorCollider.delete(j.fisica.caja.handle);
-      mundo.removeRigidBody(j.fisica.cuerpo);
+      const cuerpo = j.fisica;
+      if (cuerpo.eliminado) return;
+      cuerpo.eliminado = true;
+      jugadoresPorCollider.delete(cuerpo.caja.handle);
+      mundo.removeRigidBody(cuerpo.cuerpo);
     },
     paso(alGolpe, alTocarRoca) {
       mundo.step(cola);
