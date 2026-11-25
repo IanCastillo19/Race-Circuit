@@ -29,6 +29,8 @@ import {
   circuloContraCoche,
   resolverGanador,
   dividirPantallas,
+  localesFinalizados,
+  bloquearSalidaLocal,
 } from './colisiones.js';
 import { crearObjetos, crearSenales, crearAmbiente } from './objetos.js';
 import { crearInterfaz, crearMinimapa, TEXTOS } from './interfaz.js';
@@ -281,6 +283,7 @@ function prepararJugadores() {
     escena.add(sombra);
     const j = {
       id: i + 1,
+      esBot: false,
       color,
       vehiculo,
       sombra,
@@ -321,7 +324,7 @@ function prepararJugadores() {
 }
 
 async function iniciarPartida() {
-  if (!listo || iniciando) return;
+  if (!listo || iniciando || bloquearSalidaLocal(jugadores, partida.fase)) return;
   iniciando = true;
   for (const id of ['empezar', 'revancha', 'reiniciar']) $(id).disabled = true;
   try {
@@ -401,6 +404,7 @@ function alternarPausa() {
   else pausar();
 }
 function volverMenu() {
+  if (bloquearSalidaLocal(jugadores, partida.fase)) return;
   partida.fase = 'menu';
   partida.inspeccion = false;
   if (orbit) orbit.enabled = false;
@@ -419,14 +423,14 @@ function verCircuito() {
   orbit.target.copy(centro);
   inspeccionCamara.position.set(centro.x, caja.max.y + distancia, centro.z + distancia * 0.6);
   orbit.update();
-  mensaje(ui.t.ajustarInicio);
+  if (!bloquearSalidaLocal(jugadores, partida.fase)) mensaje(ui.t.ajustarInicio);
   redimensionar();
   pintarPantallas();
 }
 function recuperar(id) {
   if (partida.fase !== 'corriendo') return;
   const j = jugadores.find((p) => p.id === id);
-  if (!j || j.aturdimiento > 0 || j.recuperando > 0 || j.penalizacionSalida > 0) return;
+  if (!j || j.carrera.fase === 'terminada' || j.aturdimiento > 0 || j.recuperando > 0 || j.penalizacionSalida > 0) return;
   const pose = buscarPosicion(j.ultimoPunto, j, jugadores.length === 2 ? (id === 1 ? -1 : 1) : 0);
   colocar(j, pose);
   j.carrera.controlOmitido = false;
@@ -470,11 +474,21 @@ function guardarControl(j, puerta) {
   j.ultimoPunto = buscarPosicion(pose, j);
   audio.efecto('control');
 }
+function retirarCocheTerminado(j) {
+  j.estado.velocidad = 0;
+  j.nitro.restante = 0;
+  j.distanciaFrame = 0;
+  j.vehiculo.actor.visible = false;
+  j.sombra.visible = false;
+  fisica.quitarCoche(j);
+}
+
 function paso(dt) {
   if (partida.fase !== 'corriendo') return;
   compartidas.forEach((z) => (z.recarga = Math.max(0, z.recarga - dt)));
   objetos.actualizar(dt);
   for (const j of jugadores) {
+    if (j.carrera.fase === 'terminada') continue;
     j.anterior = { x: j.estado.x, z: j.estado.z, rumbo: j.estado.rumbo };
     j.avance = 0;
     j.golpe = Math.max(0, j.golpe - dt);
@@ -504,6 +518,7 @@ function paso(dt) {
     audio.efecto('golpe');
   });
   for (const j of jugadores) {
+    if (j.carrera.fase === 'terminada') continue;
     j.avance = fisica.leer(j, CONFIG.limites.activo ? limite : null, terreno);
     j.distanciaFrame += j.avance;
     if (j.aturdimiento > 0) continue;
@@ -531,29 +546,30 @@ function paso(dt) {
     }
   }
   for (const j of jugadores) {
+    if (j.carrera.fase === 'terminada') continue;
     const control = j.carrera.control,
       vueltas = j.carrera.vueltasCompletadas;
-    actualizarCarrera(
+    const terminado = actualizarCarrera(
       j.carrera,
       j.anterior,
       { ...j.estado, avance: j.avance },
       dt,
       (x, z) => terreno.tipoEn(x, z) === 'asfalto',
     );
+    if (terminado) {
+      retirarCocheTerminado(j);
+      continue;
+    }
     if (j.carrera.control !== control || j.carrera.vueltasCompletadas !== vueltas)
       guardarControl(j, puertas[(j.carrera.control + puertas.length - 1) % puertas.length]);
     const siguiente = puertas[j.carrera.control],
       dot = -Math.sin(j.estado.rumbo) * siguiente.nx - Math.cos(j.estado.rumbo) * siguiente.nz;
     j.malSentido = j.estado.velocidad > 2 && dot < -0.55;
   }
-  const ganador = resolverGanador(jugadores);
-  if (ganador !== null) {
+  if (localesFinalizados(jugadores)) {
+    const ganador = resolverGanador(jugadores);
     partida.ganador = ganador;
     partida.fase = 'resultado';
-    jugadores.forEach((j) => {
-      j.estado.velocidad = 0;
-      j.nitro.restante = 0;
-    });
     if (jugadores.length === 1 && !salidaPrueba && !modoTest) {
       try {
         nuevoRecord = guardarMarca(
@@ -571,6 +587,7 @@ function paso(dt) {
 
 function actualizarVisuales(dt) {
   for (const j of jugadores) {
+    if (j.carrera.fase === 'terminada') continue;
     const y = terreno.alturaEn(j.estado.x, j.estado.z) ?? j.vehiculo.actor.position.y - 0.015;
     j.vehiculo.actor.position.set(j.estado.x, y + 0.015, j.estado.z);
     const giro = j.derrape > 0 ? (1 - j.derrape / AJUSTES.duracionPlatano) * Math.PI * 2 : 0;
@@ -600,7 +617,7 @@ function actualizarVisuales(dt) {
     j.camara.fov += ((j.nitro.restante > 0 ? 72 : 65) - j.camara.fov) * (1 - Math.exp(-4 * dt));
   }
   nitroVisual?.actualizar({ zonas: compartidas });
-  senales?.actualizar(jugadores);
+  senales?.actualizar(jugadores.filter((j) => j.carrera.fase !== 'terminada'));
   ui.pintar(jugadores);
   audio.actualizar(jugadores, partida.fase === 'corriendo');
 }
@@ -682,6 +699,12 @@ function pintarPantallas() {
   document.body.classList.toggle('en-pista', !menu && !resultado && !pausa && !partida.inspeccion);
   $('separador').hidden = menu || resultado || partida.inspeccion || jugadores.length !== 2;
   $('ayuda-teclas').hidden = menu || resultado || partida.inspeccion;
+  const salidaBloqueada = bloquearSalidaLocal(jugadores, partida.fase);
+  $('menu').hidden = salidaBloqueada;
+  document.querySelector('.barra .marca').hidden = salidaBloqueada;
+  $('reiniciar').hidden = salidaBloqueada;
+  $('salir-pausa').hidden = salidaBloqueada;
+  $('ayuda-teclas').querySelector('span').textContent = salidaBloqueada ? ui.t.atajosSinReinicio : ui.t.atajos;
   $('pausa').textContent = pausa ? ui.t.continuar : ui.t.pausa;
   $('audio').setAttribute('aria-pressed', String(opciones.sonido));
   $('estado-global').textContent = menu
@@ -797,14 +820,14 @@ function enlazar() {
     if (e.repeat) return;
     if (partida.fase === 'corriendo') {
       const comando = { KeyQ: [0, -1], KeyE: [0, 1], KeyK: [1, -1], KeyL: [1, 1] }[e.code];
-      if (comando && jugadores[comando[0]] && cambiarMarcha(jugadores[comando[0]].estado, comando[1])) audio.efecto('marcha');
+      if (comando && jugadores[comando[0]] && jugadores[comando[0]].carrera.fase !== 'terminada' && cambiarMarcha(jugadores[comando[0]].estado, comando[1])) audio.efecto('marcha');
     }
     if (e.code === 'KeyP' || e.code === 'Escape') alternarPausa();
     if (e.code === 'Space') {
       if (partida.fase === 'menu' || partida.fase === 'resultado') iniciarPartida();
       else if (partida.fase === 'pausa') continuar();
     }
-    if (e.code === 'KeyR' && listo && partida.fase !== 'menu') iniciarPartida();
+    if (e.code === 'KeyR' && listo && partida.fase !== 'menu' && !bloquearSalidaLocal(jugadores, partida.fase)) iniciarPartida();
     if (e.code === 'KeyF') recuperar(1);
     if (e.code === 'Enter') recuperar(2);
   });
@@ -841,7 +864,7 @@ function enlazar() {
       inspeccionCamara,
     );
     const p = r.intersectObject(circuito, true)[0]?.point;
-    if (!p || terreno.tipoEn(p.x, p.z) !== 'asfalto') return;
+    if (!p || terreno.tipoEn(p.x, p.z) !== 'asfalto' || bloquearSalidaLocal(jugadores, partida.fase)) return;
     salidaPrueba = { x: p.x, z: p.z, rumbo: salidaBase.rumbo };
     iniciarPartida();
     mensaje(ui.t.entrenamiento);

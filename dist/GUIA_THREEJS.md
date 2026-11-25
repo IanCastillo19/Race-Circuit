@@ -36,7 +36,7 @@ Los checkpoints, la meta y la salida están en `TRAZADO` de `carrera.js`. Las po
 4. Solo cuentan los cruces de checkpoints en orden, hacia delante y sobre asfalto. Al terminar la tercera vuelta se muestran tiempos y resultados.
 5. `F` o `Enter` devuelve al último control validado con una penalización e inmunidad breve. `R` reinicia toda la carrera.
 
-El cronómetro usa únicamente tiempo simulado durante la fase de carrera. En un fotograma lento se simulan hasta 0,25 s y se descarta el resto tanto para movimiento como para el crono; pausa y pestaña oculta detienen ambos. En dos jugadores, la carrera termina en cuanto el primero completa las tres vueltas: la espera a los demás es una función futura para bots y torneos.
+El cronómetro usa únicamente tiempo simulado durante la fase de carrera. En un fotograma lento se simulan hasta 0,25 s y se descarta el resto tanto para movimiento como para el crono; pausa y pestaña oculta detienen ambos. En dos jugadores, el primero que cruza la meta en la tercera vuelta queda clasificado, desaparece de la pista y deja de colisionar. El otro continúa conduciendo y mantiene su propio cronómetro. La pantalla de resultados se abre después de que ambos jugadores locales terminen; hasta entonces, reiniciar y volver al menú no aparecen en la interfaz. Esta regla prepara la incorporación futura de bots y torneos.
 
 ## Cambio manual y controles
 
