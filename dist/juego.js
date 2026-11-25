@@ -1,4 +1,4 @@
-import { cambiarMarcha } from './marchas.js';
+import { cambiarMarcha, limiteMarcha } from './marchas.js';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -109,7 +109,8 @@ let listo = false,
   ancho = 1,
   alto = 1,
   acumulador = 0,
-  ultimoInstante;
+  ultimoInstante,
+  iniciando = false;
 let partida = { fase: 'menu', cuenta: 3, previa: 'corriendo', ganador: null, inspeccion: false };
 let compartidas = [],
   diagnosticos = [],
@@ -320,40 +321,54 @@ function prepararJugadores() {
 }
 
 async function iniciarPartida() {
-  if (!listo) return;
-  leerOpciones();
-  partida = {
-    fase: 'cuenta',
-    cuenta: TRAZADO.cuentaAtras,
-    previa: 'corriendo',
-    ganador: null,
-    inspeccion: false,
-  };
-  orbit.enabled = false;
-  acumulador = 0;
-  ultimoInstante = undefined;
-  const aceleradoresPulsados = [...teclas].filter(t => t === 'KeyW' || t === 'ArrowUp');
-  teclas.clear();
-  for (const t of aceleradoresPulsados) teclas.add(t);
-  $('cuenta-texto').textContent = String(Math.ceil(partida.cuenta));
-  segundoCuenta = 0;
-  recordAnterior = leerRecord();
-  nuevoRecord = false;
-  document.querySelector('.resultado-tarjeta').classList.remove('ganador');
-  objetos.grupo.visible = opciones.objetos;
-  fisica.activarObjetos(opciones.objetos);
-  objetos.reiniciar();
-  compartidas = nitroVisual.zonas.map((p) => ({ ...p, recarga: 0 }));
-  nitroVisual.actualizar({ zonas: compartidas });
-  ambiente.cambiar(opciones.ambiente);
-  prepararJugadores();
-  for (const t of aceleradoresPulsados) comprobarSalida(t);
-  redimensionar();
-  $('escena').focus({ preventScroll: true });
-  if (opciones.sonido && !(await audio.activar(true))) mensaje(ui.t.noSonido);
-  else if (!opciones.sonido) audio.activar(false);
-  if (partida.cuenta <= 0) salida();
-  pintarPantallas();
+  if (!listo || iniciando) return;
+  iniciando = true;
+  for (const id of ['empezar', 'revancha', 'reiniciar']) $(id).disabled = true;
+  try {
+    leerOpciones();
+    partida = {
+      fase: 'cuenta',
+      cuenta: TRAZADO.cuentaAtras,
+      previa: 'corriendo',
+      ganador: null,
+      inspeccion: false,
+    };
+    orbit.enabled = false;
+    acumulador = 0;
+    ultimoInstante = undefined;
+    const aceleradoresPulsados = [...teclas].filter(t => t === 'KeyW' || t === 'ArrowUp');
+    teclas.clear();
+    for (const t of aceleradoresPulsados) teclas.add(t);
+    $('cuenta-texto').textContent = String(Math.ceil(partida.cuenta));
+    segundoCuenta = 0;
+    recordAnterior = leerRecord();
+    nuevoRecord = false;
+    document.querySelector('.resultado-tarjeta').classList.remove('ganador');
+    objetos.grupo.visible = opciones.objetos;
+    fisica.activarObjetos(opciones.objetos);
+    objetos.reiniciar();
+    compartidas = nitroVisual.zonas.map((p) => ({ ...p, recarga: 0 }));
+    nitroVisual.actualizar({ zonas: compartidas });
+    ambiente.cambiar(opciones.ambiente);
+    prepararJugadores();
+    for (const t of aceleradoresPulsados) comprobarSalida(t);
+    redimensionar();
+    $('escena').focus({ preventScroll: true });
+    if (opciones.sonido && !(await audio.activar(true))) mensaje(ui.t.noSonido);
+    else if (!opciones.sonido) audio.activar(false);
+    if (partida.fase === 'cuenta') {
+      if (partida.cuenta <= 0) salida();
+      pintarPantallas();
+    }
+  } catch (error) {
+    console.error(error);
+    partida.fase = 'menu';
+    mensaje(ui.t.error);
+    pintarPantallas();
+  } finally {
+    iniciando = false;
+    for (const id of ['empezar', 'revancha', 'reiniciar']) $(id).disabled = false;
+  }
 }
 function salida() {
   partida.fase = 'corriendo';
@@ -469,7 +484,9 @@ function paso(dt) {
     j.cesped = terreno.porcentajeCesped(j.estado, j.puntos);
     const mejorada = ajustarConduccion(CONFIG.conduccion, j.estado.velocidad, j.nitro);
     const ajustes = conduccionEnTerreno(mejorada, CONFIG.cesped, j.cesped);
-    j.limiteHud = j.estado.velocidad < 0 ? ajustes.velocidadMarchaAtras : ajustes.velocidadMaxima;
+    j.limiteHud = j.estado.velocidad < 0
+      ? ajustes.velocidadMarchaAtras
+      : limiteMarcha(j.estado, ajustes.velocidadMaxima);
     const inmovil = j.recuperando > 0 || j.penalizacionSalida > 0 || j.aturdimiento > 0;
     j.aturdimiento = Math.max(0, j.aturdimiento - dt);
     fisica.conducir(j, entradaJugador(j), ajustes, (terreno.alturaEn(j.estado.x, j.estado.z) ?? 0) + .015, inmovil);
@@ -604,7 +621,7 @@ function cuadro(delta) {
     }
   }
   if (partida.fase === 'corriendo') {
-    if (delta > 0.25) jugadores.forEach((j) => (j.carrera.tiempo += delta - 0.25));
+    // El crono avanza solo con la física simulada: un tirón de renderizado no penaliza al piloto.
     acumulador += Math.min(delta, 0.25);
     while (acumulador >= AJUSTES.pasoFisica && partida.fase === 'corriendo') {
       paso(AJUSTES.pasoFisica);

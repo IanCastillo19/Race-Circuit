@@ -1,55 +1,50 @@
-# Race Circuit · Web del proyecto
+# Race Circuit
 
-Web informativa arcade escrita en HTML, CSS y JavaScript. Presenta la idea del juego, las mecánicas previstas, tres escenarios conceptuales y el equipo: Ian Castillo, Eric Abidal y Wassim Akka.
-
-## Abrir y editar
-
-Los archivos de la página están en `dist/`. Abre `dist/index.html` en un navegador. No hacen falta npm, un framework, una API ni conexión a servicios externos para usar esta página.
-
-- `dist/index.html`: estructura y contenido inicial en castellano.
-- `dist/style.css`: diseño, tamaños de móvil y escritorio y estados de los controles.
-- `dist/themes.css`: tipografía de carreras, cinta continua y fondos de costa, neón y montaña.
-- `dist/script.js`: textos en ES/CA/EN, selector de escenarios, controles informativos y menú móvil.
-- `dist/assets/`: favicon e imágenes conceptuales optimizadas.
-
-Puedes copiar el contenido de `dist/` a la carpeta de la web de vuestro repositorio de GitHub. Conserva `assets/` junto a `index.html`, `style.css` y `script.js` para que las rutas funcionen.
-
-## Idiomas
-
-El castellano es el idioma inicial. Los botones ES, CA y EN cambian los textos, los títulos, las etiquetas accesibles y las descripciones de las imágenes. La elección se guarda en el navegador cuando el almacenamiento está disponible. También puedes abrir `index.html?lang=ca` o `index.html?lang=en`.
-
-## Cinta y fondos
-
-La cinta repite «Race Circuit / 3 vueltas / Buenos ratos» sin dejar un espacio vacío al terminar. JavaScript calcula cuántas repeticiones hacen falta para cubrir la pantalla, crea dos grupos idénticos y CSS desplaza uno de ellos. La velocidad se controla con `RIBBON_SPEED = 32` en `script.js` (píxeles por segundo). Baja ese número para mover las palabras más despacio.
-
-Los fondos usan las tres imágenes conceptuales existentes. Los atributos `data-background-scene` de las secciones marcan dónde comienza cada ambiente: costa en la introducción, ciudad neón en los mundos y montaña helada en los controles. Puedes mover esos atributos a otras secciones para cambiar el recorrido. Las capas cambian suavemente al desplazarte; `themes.css` define los colores y las capas que mantienen la lectura.
-
-La tipografía de títulos, marca y cinta es Racing Sans One, incluida localmente en `dist/assets/fonts/` junto con su licencia SIL Open Font License. Fuente original: https://github.com/google/fonts/tree/main/ofl/racingsansone. Los párrafos conservan una tipografía de lectura. El modo de movimiento reducido detiene la cinta y elimina los fundidos.
-
-Los textos se editan en el objeto `translations` de `script.js`. Las claves deben existir en los tres idiomas. Los saltos `\n` dentro de los títulos se convierten en saltos de línea, sin insertar HTML arbitrario.
-
-## Página del juego
-
-El botón **Jugar ahora** apunta a `jugar.html?lang=es` (o al idioma seleccionado). **No se incluye `jugar.html`**, porque todavía no existe la versión jugable. Por ahora, seguir el enlace puede mostrar un error de página no encontrada, como corresponde a esa ruta pendiente.
-
-Cuando integréis el juego, cread `dist/jugar.html` junto a `index.html` y añadid ahí los módulos y recursos de Three.js. Esta página informativa no carga Three.js ni simula que el juego está terminado. Los controles mostrados solo explican el diseño previsto.
-
-## Imágenes y dirección visual
-
-Las tres imágenes son arte conceptual generado con IA para esta web, no capturas de un juego ni modelos finales:
-
-- `coast.webp`: Costa Turbo, entorno tropical.
-- `neon.webp`: Ciudad Neón, entorno urbano nocturno.
-- `alpine.webp`: Cumbre Helada, entorno nevado.
-
-Sus nombres y ambientes son propuestas visuales. Los modelos reales se crearán en Blender y podrán sustituir estas imágenes cuando tengáis capturas. Los prompts se conservan en `CONCEPTOS_IMAGENES.md`.
-
-## Comportamiento y accesibilidad
-
-El diseño se adapta a diferentes anchos de pantalla. El menú móvil puede cerrarse con Escape. El selector de mundos admite las flechas del teclado, Home y End. Hay etiquetas accesibles, textos alternativos traducidos, foco visible y respeto por `prefers-reduced-motion`.
+Juego de carreras arcade 3D para uno o dos jugadores locales, desarrollado por Ian Castillo, Eric Abidal y Wassim Akka. La web de presentación y el prototipo jugable están en `dist/`.
 
 ## Estado del proyecto
 
-Están previstos tres vueltas, cronómetro, dos jugadores, conducción con WASD/flechas, marcha atrás, ralentización en césped y cámara de seguimiento. Los efectos de plátanos, rocas y turbo se presentan como propuestas de diseño. La web no afirma que estas mecánicas ya estén implementadas.
+La base jugable se integra por milestones. `MS2` contiene el prototipo con pantalla dividida; `T15` añade el cambio manual y `T17` reúne correcciones posteriores. El equipo integrará el trabajo en `main` después de MS3.
 
-La publicación de demostración se gestiona con Sites. Para trasladar la web a vuestro GitHub, bastan los archivos de `dist/`; no necesitáis la configuración de Sites.
+El prototipo incluye tres vueltas con checkpoints obligatorios, contrarreloj y récord local, dos jugadores en el mismo teclado, pantalla dividida vertical u horizontal, nitro, rocas, plátanos, penalización de césped, colisiones, recuperación en el último control y seis marchas con RPM y calado.
+
+Costa, neón y montaña son **ambientes visuales del mismo circuito**. No son tres trazados distintos todavía. El modo de dos jugadores es local; no hay multijugador online ni bots por ahora.
+
+## Ejecutar
+
+Sirve la carpeta del proyecto con Live Server y abre `dist/index.html`; también puedes abrir `dist/jugar.html` directamente. Otra opción desde la raíz del repositorio es `py -m http.server 8000` y después `http://localhost:8000/dist/index.html`. El juego carga módulos JavaScript, Three.js, Rapier y recursos locales desde `dist/`; utiliza un servidor HTTP local, no `file://`. No requiere instalar paquetes npm para jugar.
+
+Si el botón «Empezar» permanece desactivado, abre «Modelos y ajustes» en el menú del juego para ver el error de carga. Las rutas y parámetros principales están en `dist/config.js`, `dist/ajustes-juego.js`, `dist/carrera.js` y `dist/nitro.js`.
+
+## Controles
+
+| Acción | Jugador 1 | Jugador 2 |
+| --- | --- | --- |
+| Acelerar y girar | W, A, D | Flecha arriba, izquierda, derecha |
+| Frenar y retroceder | S | Flecha abajo |
+| Bajar / subir marcha | Q / E | K / L |
+| Volver al último control | F | Enter |
+
+En solitario también funcionan las flechas para conducir. `P` o `Esc` pausa; `R` reinicia. Se sale en primera. Si el motor se cala en una marcha alta, bajar hasta primera lo vuelve a encender. El menú permite elegir 1 o 2 jugadores, orientación de pantalla, ambiente, obstáculos, sonido e idioma (ES/CA/EN).
+
+## Reglas de carrera y récord
+
+La meta solo cuenta después de cruzar todos los checkpoints en orden y en el sentido correcto. En dos jugadores gana el primero que complete la tercera vuelta. En solitario la mejor marca se guarda en este navegador para el circuito actual, separando partidas con obstáculos y sin ellos. Las salidas de prueba elegidas desde «Ver circuito» no guardan récord.
+
+El cronómetro avanza con los pasos de física mientras la carrera está activa. Pausa y cambio de pestaña lo detienen. Si un fotograma tarda demasiado, se simulan como máximo 0,25 segundos: el tiempo descartado tampoco se añade al cronómetro, de modo que un bloqueo del navegador no penalice una marca sin avance equivalente.
+
+## Archivos de código
+
+- `dist/index.html`, `dist/script.js`, `dist/style.css`, `dist/themes.css`: web e idiomas.
+- `dist/jugar.html`, `dist/juego.js`, `dist/juego.css`, `dist/interfaz.js`: partida, menús y HUD.
+- `dist/carrera.js`, `dist/movimiento.js`, `dist/marchas.js`, `dist/fisica.js`: reglas, conducción y colisiones.
+- `dist/terreno.js`, `dist/limites.js`, `dist/objetos.js`, `dist/nitro.js`: pista y elementos de carrera.
+- `dist/vendor/`: bibliotecas usadas por el navegador; `dist/assets/`: recursos locales.
+
+Consulta `dist/GUIA_THREEJS.md` para el flujo técnico y los puntos de configuración. `LEEME.md` y `VALIDACION.md` documentan una entrega anterior (T7) y sus pruebas; no describen la validación actual de T17.
+
+## Próximos desarrollos
+
+Primero: fantasma de la mejor vuelta, derrape con miniturbo, resultados con parciales e historial y configuración de carreras por datos. Después: bots para carreras en solitario. Con bots y tres circuitos funcionales, un torneo de tres carreras sumará los tiempos de finalización de cada participante; ganará el menor total. Al completar su tercera vuelta, cada coche dejará de ocupar pista y de colisionar, mientras los demás terminan. La puntuación y el resultado del torneo se mostrarán cuando todos hayan acabado.
+
+Los trazados definitivos y sus reglas se configurarán cuando estén listos; el detector actual todavía requiere asfalto y césped. El multijugador online y los controles táctiles no forman parte del prototipo actual.
